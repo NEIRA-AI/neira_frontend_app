@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Semantic utilities stay stable; only these theme values change. */
+@theme inline {
+  --color-brand: var(--ui-brand);
+  --color-brand-fill: var(--ui-brand-fill);
+  --color-brand-hover: var(--ui-brand-hover);
+  --color-brand-strong: var(--ui-brand-strong);
+  --color-brand-light: var(--ui-brand-light);
+  --color-brand-soft: var(--ui-brand-soft);
+  --color-brand-20: var(--ui-brand-20);
+  --color-page: var(--ui-page);
+  --color-surface: var(--ui-surface);
+  --color-subtle: var(--ui-subtle);
+  --color-ink: var(--ui-ink);
+  --color-muted: var(--ui-muted);
+  --color-muted-strong: var(--ui-muted-strong);
+  --color-ink-90: var(--ui-ink-90);
+  --color-ink-70: var(--ui-ink-70);
+  --color-ink-50: var(--ui-ink-50);
+  --color-ink-40: var(--ui-ink-40);
+  --color-ink-20: var(--ui-ink-20);
+  --color-ink-10: var(--ui-ink-10);
+  --color-ink-5: var(--ui-ink-5);
+  --color-line: var(--ui-line);
+  --color-danger: var(--ui-danger);
+  --color-success: var(--ui-success);
+  --color-success-ink: var(--ui-success-ink);
+  --color-info: var(--ui-info);
+  --color-warning: var(--ui-warning);
+  --color-success-soft: var(--ui-success-soft);
+  --color-info-soft: var(--ui-info-soft);
+  --color-warning-soft: var(--ui-warning-soft);
+  --color-danger-soft: var(--ui-danger-soft);
+  --color-on-brand: var(--ui-on-brand);
+  --color-on-dark: var(--ui-on-dark);
+  --color-auth-artwork: var(--ui-auth-artwork);
+  --color-auth-overlay: var(--ui-auth-overlay);
+  --color-overlay: var(--ui-overlay);
+  --color-avatar-control: var(--ui-avatar-control);
+  --color-avatar-control-ink: var(--ui-avatar-control-ink);
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --ui-brand: #7c3aed;
+  --ui-brand-fill: #7c3aed;
+  --ui-brand-hover: #6b30d4;
+  --ui-brand-strong: #5b21b6;
+  --ui-brand-light: #7c3aed;
+  --ui-brand-soft: rgb(124 58 237 / 10%);
+  --ui-brand-20: rgb(124 58 237 / 20%);
+  --ui-page: #efeff6;
+  --ui-surface: #ffffff;
+  --ui-subtle: #efeff6;
+  --ui-ink: #1a1635;
+  --ui-muted: rgb(26 22 53 / 70%);
+  --ui-muted-strong: rgb(26 22 53 / 90%);
+  --ui-ink-90: rgb(26 22 53 / 90%);
+  --ui-ink-70: rgb(26 22 53 / 70%);
+  --ui-ink-50: rgb(26 22 53 / 50%);
+  --ui-ink-40: rgb(26 22 53 / 40%);
+  --ui-ink-20: rgb(26 22 53 / 20%);
+  --ui-ink-10: rgb(26 22 53 / 10%);
+  --ui-ink-5: rgb(26 22 53 / 5%);
+  --ui-line: rgb(26 22 53 / 10%);
+  --ui-danger: #e0163f;
+  --ui-success: #00b585;
+  --ui-success-ink: #007655;
+  --ui-info: #1284ff;
+  --ui-warning: #ff8d2f;
+  --ui-success-soft: rgb(0 181 133 / 10%);
+  --ui-info-soft: rgb(18 132 255 / 10%);
+  --ui-warning-soft: rgb(255 141 47 / 10%);
+  --ui-danger-soft: rgb(224 22 63 / 10%);
+  --ui-on-brand: #ffffff;
+  --ui-on-dark: #ffffff;
+  --ui-auth-artwork: #070811;
+  --ui-auth-overlay: rgb(0 0 0 / 40%);
+  --ui-overlay: rgb(13 16 23 / 55%);
+  --ui-avatar-control: #ffffff;
+  --ui-avatar-control-ink: #0d1017;
+  --ui-brand-glow: rgb(124 58 237 / 9%);
+
+  font-family: var(--font-sans);
+  color: var(--ui-ink);
+  background: var(--ui-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-brand: #d2b6ff;
+  --ui-brand-fill: #7c3aed;
+  --ui-brand-hover: #6b30d4;
+  --ui-brand-strong: #d2b6ff;
+  --ui-brand-light: #d2b6ff;
+  --ui-brand-soft: rgb(124 58 237 / 20%);
+  --ui-brand-20: rgb(124 58 237 / 20%);
+  --ui-page: #0d1017;
+  --ui-surface: #1c1e2c;
+  --ui-subtle: #363848;
+  --ui-ink: #ffffff;
+  --ui-muted: rgb(235 235 245 / 50%);
+  --ui-muted-strong: rgb(235 235 245 / 90%);
+  --ui-ink-90: rgb(235 235 245 / 90%);
+  --ui-ink-70: rgb(235 235 245 / 70%);
+  --ui-ink-50: rgb(235 235 245 / 50%);
+  --ui-ink-40: rgb(235 235 245 / 40%);
+  --ui-ink-20: rgb(235 235 245 / 20%);
+  --ui-ink-10: rgb(235 235 245 / 10%);
+  --ui-ink-5: rgb(235 235 245 / 5%);
+  --ui-line: rgb(235 235 245 / 10%);
+  --ui-danger: #ff6392;
+  --ui-success: #81f4b8;
+  --ui-success-ink: #81f4b8;
+  --ui-info: #76e6ff;
+  --ui-warning: #f59e0b;
+  --ui-success-soft: rgb(129 244 184 / 10%);
+  --ui-info-soft: rgb(118 230 255 / 10%);
+  --ui-warning-soft: rgb(245 158 11 / 10%);
+  --ui-danger-soft: rgb(255 99 146 / 10%);
+  --ui-on-brand: #ffffff;
+  --ui-on-dark: #ffffff;
+  --ui-auth-artwork: #070811;
+  --ui-auth-overlay: rgb(0 0 0 / 40%);
+  --ui-overlay: rgb(0 0 0 / 65%);
+  --ui-avatar-control: #ffffff;
+  --ui-avatar-control-ink: #0d1017;
+  --ui-brand-glow: rgb(124 58 237 / 12%);
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+.status-page-backdrop {
+  background:
+    radial-gradient(circle at 15% 15%, var(--ui-brand-glow), transparent 35%),
+    radial-gradient(circle at 90% 85%, var(--ui-brand-glow), transparent 35%);
+}
+
+@keyframes reveal-navigation-loading {
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.navigation-loading {
+  opacity: 0;
+  visibility: hidden;
+  animation: reveal-navigation-loading 1ms linear 180ms forwards;
+}
+
+@keyframes mobile-menu-overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes mobile-menu-overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes mobile-menu-panel-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes mobile-menu-panel-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.mobile-menu-overlay[data-state="open"] {
+  animation: mobile-menu-overlay-in 200ms ease-out both;
+}
+
+.mobile-menu-overlay[data-state="closed"] {
+  animation: mobile-menu-overlay-out 160ms ease-in both;
+}
+
+.mobile-menu-panel[data-state="open"] {
+  animation: mobile-menu-panel-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mobile-menu-panel[data-state="closed"] {
+  animation: mobile-menu-panel-out 180ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu-overlay,
+  .mobile-menu-panel {
+    animation: none;
+  }
+}
