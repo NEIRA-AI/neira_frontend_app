@@ -4,8 +4,10 @@ import { RouterProvider } from "react-router/dom";
 
 import { router } from "@/app/router.tsx";
 import { initI18n } from "@/app/i18n/i18n";
-import { BootstrapErrorScreen } from "@/app/bootstrap-error-screen";
-import { RootErrorBoundary } from "@/app/root-error-boundary";
+import {
+  BootstrapErrorScreen,
+  RootErrorBoundary,
+} from "@/features/error-boundary";
 import "@/app/index.css";
 
 const root = createRoot(document.getElementById("root")!);

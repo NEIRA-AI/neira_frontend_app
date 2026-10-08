@@ -1,12 +1,17 @@
 import { cn } from "@/shared/lib/cn";
 import { NeiraLogo } from "@/shared/ui/logo";
+import { useTranslation } from "react-i18next";
 
 type LoadingScreenProps = {
   className?: string;
-  label: string;
+  label?: string;
 };
 
 export function LoadingScreen({ className, label }: LoadingScreenProps) {
+  const { t } = useTranslation("app");
+
+  const loadingLabel = label ?? t("loading");
+
   return (
     <div
       className={cn(
@@ -45,7 +50,7 @@ export function LoadingScreen({ className, label }: LoadingScreenProps) {
         </div>
         <div className="flex flex-col items-center gap-2">
           <NeiraLogo className="w-24" />
-          <span className="text-sm text-muted">{label}</span>
+          <span className="text-sm text-muted">{loadingLabel}</span>
         </div>
       </div>
     </div>

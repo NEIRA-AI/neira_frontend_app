@@ -1,16 +1,18 @@
 import { Outlet, useNavigation } from "react-router";
 
-import { RouteLoadingScreen } from "./route-loading-screen";
+import { LoadingScreen } from "@/shared/ui/loading-screen";
 
 export function App() {
   const navigation = useNavigation();
 
   return (
     <>
-      <Outlet />
+      <div className="min-h-screen flex flex-col">
+        <Outlet />
+      </div>
       {navigation.state !== "idle" && (
         <div className="navigation-loading fixed inset-0 z-60">
-          <RouteLoadingScreen />
+          <LoadingScreen />
         </div>
       )}
     </>

@@ -1,13 +1,17 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, redirect } from "react-router";
 
-import { NotFoundPage } from "@/pages/not-found";
-import { ROUTES } from "@/shared/routes";
+import { RouteErrorBoundary } from "@/features/error-boundary";
+import { NotFoundPage } from "@/features/not-found";
+import { ROUTES } from "@/shared/config/routes";
+import { LoadingScreen } from "@/shared/ui/loading-screen";
 
 import { App } from "./app";
-import { ProtectedLayout } from "./protected-layout";
 import { Providers } from "./providers";
-import { RouteErrorBoundary } from "./route-error-boundary";
-import { RouteLoadingScreen } from "./route-loading-screen";
+import {
+  GuestOnlyRoute,
+  ProtectedRoute,
+  WorkspaceRequiredRoute,
+} from "./route-guards";
 
 export const router = createBrowserRouter([
   {
@@ -17,35 +21,81 @@ export const router = createBrowserRouter([
       </Providers>
     ),
     ErrorBoundary: RouteErrorBoundary,
-    HydrateFallback: RouteLoadingScreen,
+    HydrateFallback: LoadingScreen,
     children: [
       {
-        lazy: () => import("./auth-route"),
+        path: ROUTES.HOME,
+        loader: () => redirect(ROUTES.SETTINGS),
+        Component: LoadingScreen,
+      },
+      {
+        element: <GuestOnlyRoute />,
         children: [
           {
             path: ROUTES.SIGN_IN,
-            lazy: () => import("@/pages/auth/sign-in.page"),
+            lazy: () => import("@/features/auth/sign-in.page"),
           },
           {
             path: ROUTES.SIGN_UP,
-            lazy: () => import("@/pages/auth/sign-up.page"),
-          },
-          {
-            path: ROUTES.VERIFY,
-            lazy: () => import("@/pages/auth/verify.page"),
+            lazy: () => import("@/features/auth/sign-up.page"),
           },
         ],
       },
       {
-        element: <ProtectedLayout />,
+        path: ROUTES.VERIFY,
+        lazy: () => import("@/features/auth/verify.page"),
+      },
+      {
+        path: ROUTES.INVITATION,
+        lazy: () => import("@/features/invitations/invitation.page"),
+      },
+      {
+        element: <ProtectedRoute />,
         children: [
           {
-            lazy: () => import("./cabinet-route"),
+            path: ROUTES.SELECT_WORKSPACE,
+            lazy: () => import("@/features/workspaces/select-workspace.page"),
+          },
+          {
+            lazy: () =>
+              import("@/features/dashboard-layout/ui/dashboard-layout"),
             children: [
-              { path: ROUTES.HOME, lazy: () => import("@/pages/home") },
               {
-                path: ROUTES.SETTINGS,
-                lazy: () => import("@/pages/settings/settings.page"),
+                path: ROUTES.NOTIFICATIONS,
+                lazy: () =>
+                  import("@/features/notifications/notifications.page"),
+              },
+              {
+                element: <WorkspaceRequiredRoute />,
+                children: [
+                  {
+                    lazy: () => import("@/features/channels/channels-route"),
+                    children: [
+                      {
+                        path: ROUTES.CHANNELS,
+                        lazy: () => import("@/features/channels/channels.page"),
+                      },
+                      {
+                        path: ROUTES.CHANNELS_CONNECT,
+                        lazy: () =>
+                          import("@/features/channels/connect/connect-channel.page"),
+                      },
+                      {
+                        path: ROUTES.CHANNEL_DETAILS,
+                        lazy: () =>
+                          import("@/features/channels/channel-edit.page"),
+                      },
+                    ],
+                  },
+                  {
+                    path: ROUTES.FUNNELS,
+                    lazy: () => import("@/features/funnels/funnels.page"),
+                  },
+                  {
+                    path: ROUTES.SETTINGS,
+                    lazy: () => import("@/features/settings/settings.page"),
+                  },
+                ],
               },
             ],
           },

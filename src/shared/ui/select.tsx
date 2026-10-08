@@ -15,7 +15,9 @@ type SelectProps = {
   options: readonly SelectOption[];
   ariaLabel: string;
   className?: string;
+  contentClassName?: string;
   disabled?: boolean;
+  id?: string;
   name?: string;
 };
 
@@ -25,7 +27,9 @@ export function Select({
   options,
   ariaLabel,
   className,
+  contentClassName,
   disabled,
+  id,
   name,
 }: SelectProps) {
   return (
@@ -37,6 +41,7 @@ export function Select({
     >
       <SelectPrimitive.Trigger
         aria-label={ariaLabel}
+        id={id}
         className={cn(
           "inline-flex min-h-10 min-w-32 items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 text-sm text-ink transition-colors hover:bg-subtle",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50",
@@ -52,7 +57,10 @@ export function Select({
         <SelectPrimitive.Content
           position="popper"
           sideOffset={6}
-          className="z-50 min-w-(--radix-select-trigger-width) overflow-hidden rounded-xl border border-line bg-surface p-1 text-ink shadow-lg"
+          className={cn(
+            "z-50 min-w-(--radix-select-trigger-width) overflow-hidden rounded-xl border border-line bg-surface p-1 text-ink shadow-lg",
+            contentClassName,
+          )}
         >
           <SelectPrimitive.Viewport>
             {options.map((option) => (

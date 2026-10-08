@@ -28,4 +28,50 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ["src/features/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/pages/**", "@/widgets/**", "@/entities/**"],
+              message: "Use the app/features/shared structure.",
+            },
+            {
+              group: ["@/app/**"],
+              message: "Feature modules must not depend on app.",
+            },
+            {
+              group: ["@/features/*/*"],
+              message: "Import another feature through its public index.ts.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/shared/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/app/**",
+                "@/features/**",
+                "@/pages/**",
+                "@/widgets/**",
+                "@/entities/**",
+              ],
+              message: "Shared code must not depend on app or feature modules.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

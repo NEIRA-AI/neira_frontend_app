@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/cn";
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   asChild?: boolean;
   size?: "sm" | "md" | "lg";
-  variant?: "primary" | "secondary" | "outline" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
 };
 
 const variants = {
@@ -15,6 +15,7 @@ const variants = {
   secondary: "bg-brand-soft text-brand hover:bg-brand-soft/70",
   outline: "border border-line bg-surface text-ink hover:bg-page",
   ghost: "text-ink hover:bg-subtle",
+  danger: "bg-danger-fill text-on-brand hover:bg-danger-fill/90",
 } as const;
 
 const sizes = {

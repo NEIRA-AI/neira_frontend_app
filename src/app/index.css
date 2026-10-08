@@ -26,10 +26,12 @@
   --color-ink-5: var(--ui-ink-5);
   --color-line: var(--ui-line);
   --color-danger: var(--ui-danger);
+  --color-danger-fill: var(--ui-danger-fill);
   --color-success: var(--ui-success);
   --color-success-ink: var(--ui-success-ink);
   --color-info: var(--ui-info);
   --color-warning: var(--ui-warning);
+  --color-warning-ink: var(--ui-warning-ink);
   --color-success-soft: var(--ui-success-soft);
   --color-info-soft: var(--ui-info-soft);
   --color-warning-soft: var(--ui-warning-soft);
@@ -70,10 +72,12 @@
   --ui-ink-5: rgb(26 22 53 / 5%);
   --ui-line: rgb(26 22 53 / 10%);
   --ui-danger: #e0163f;
+  --ui-danger-fill: #e0163f;
   --ui-success: #00b585;
   --ui-success-ink: #007655;
   --ui-info: #1284ff;
   --ui-warning: #ff8d2f;
+  --ui-warning-ink: #934300;
   --ui-success-soft: rgb(0 181 133 / 10%);
   --ui-info-soft: rgb(18 132 255 / 10%);
   --ui-warning-soft: rgb(255 141 47 / 10%);
@@ -86,6 +90,22 @@
   --ui-avatar-control: #ffffff;
   --ui-avatar-control-ink: #0d1017;
   --ui-brand-glow: rgb(124 58 237 / 9%);
+  --funnel-violet: #7c3aed;
+  --funnel-violet-soft: rgb(124 58 237 / 12%);
+  --funnel-blue: #3b82f6;
+  --funnel-blue-soft: rgb(59 130 246 / 12%);
+  --funnel-cyan: #0d9db4;
+  --funnel-cyan-soft: rgb(13 157 180 / 12%);
+  --funnel-mint: #16a085;
+  --funnel-mint-soft: rgb(22 160 133 / 12%);
+  --funnel-amber: #d99016;
+  --funnel-amber-soft: rgb(217 144 22 / 13%);
+  --funnel-coral: #e46e66;
+  --funnel-coral-soft: rgb(228 110 102 / 12%);
+  --funnel-pink: #d954a3;
+  --funnel-pink-soft: rgb(217 84 163 / 12%);
+  --funnel-slate: #778397;
+  --funnel-slate-soft: rgb(119 131 151 / 12%);
 
   font-family: var(--font-sans);
   color: var(--ui-ink);
@@ -119,10 +139,12 @@
   --ui-ink-5: rgb(235 235 245 / 5%);
   --ui-line: rgb(235 235 245 / 10%);
   --ui-danger: #ff6392;
+  --ui-danger-fill: #e0163f;
   --ui-success: #81f4b8;
   --ui-success-ink: #81f4b8;
   --ui-info: #76e6ff;
   --ui-warning: #f59e0b;
+  --ui-warning-ink: #ffc36b;
   --ui-success-soft: rgb(129 244 184 / 10%);
   --ui-info-soft: rgb(118 230 255 / 10%);
   --ui-warning-soft: rgb(245 158 11 / 10%);
@@ -135,6 +157,22 @@
   --ui-avatar-control: #ffffff;
   --ui-avatar-control-ink: #0d1017;
   --ui-brand-glow: rgb(124 58 237 / 12%);
+  --funnel-violet: #b891ff;
+  --funnel-violet-soft: rgb(184 145 255 / 18%);
+  --funnel-blue: #7bb6ff;
+  --funnel-blue-soft: rgb(123 182 255 / 18%);
+  --funnel-cyan: #61d8ee;
+  --funnel-cyan-soft: rgb(97 216 238 / 18%);
+  --funnel-mint: #68d9b7;
+  --funnel-mint-soft: rgb(104 217 183 / 18%);
+  --funnel-amber: #ffd078;
+  --funnel-amber-soft: rgb(255 208 120 / 18%);
+  --funnel-coral: #ff9a8a;
+  --funnel-coral-soft: rgb(255 154 138 / 18%);
+  --funnel-pink: #f09bc9;
+  --funnel-pink-soft: rgb(240 155 201 / 18%);
+  --funnel-slate: #aeb8cc;
+  --funnel-slate-soft: rgb(174 184 204 / 18%);
 }
 
 body {
