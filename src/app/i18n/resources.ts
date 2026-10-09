@@ -1,11 +1,12 @@
 import { languageTranslations } from "@/features/change-language";
 import { themeTranslations } from "@/features/change-theme";
 import { authTranslations } from "@/features/auth";
+import { channelsTranslations } from "@/features/channels";
 import {
-  channelEditTranslations,
-  channelConnectTranslations,
-  channelsTranslations,
-} from "@/features/channels";
+  channelEditPreviewTranslations,
+  channelConnectPreviewTranslations,
+  channelsPreviewTranslations,
+} from "@/features/channels-preview";
 import { dashboardTranslations } from "@/features/dashboard-layout";
 import { errorTranslations } from "@/features/error-boundary";
 import { funnelsTranslations } from "@/features/funnels";
@@ -25,8 +26,9 @@ const ru = {
   auth: authTranslations.ru,
   dashboard: dashboardTranslations.ru,
   channels: channelsTranslations.ru,
-  channelEdit: channelEditTranslations.ru,
-  channelConnect: channelConnectTranslations.ru,
+  channelsPreview: channelsPreviewTranslations.ru,
+  channelEditPreview: channelEditPreviewTranslations.ru,
+  channelConnectPreview: channelConnectPreviewTranslations.ru,
   error: errorTranslations.ru,
   funnels: funnelsTranslations.ru,
   invitations: invitationsTranslations.ru,
@@ -44,8 +46,9 @@ const en = {
   auth: authTranslations.en,
   dashboard: dashboardTranslations.en,
   channels: channelsTranslations.en,
-  channelEdit: channelEditTranslations.en,
-  channelConnect: channelConnectTranslations.en,
+  channelsPreview: channelsPreviewTranslations.en,
+  channelEditPreview: channelEditPreviewTranslations.en,
+  channelConnectPreview: channelConnectPreviewTranslations.en,
   error: errorTranslations.en,
   funnels: funnelsTranslations.en,
   invitations: invitationsTranslations.en,

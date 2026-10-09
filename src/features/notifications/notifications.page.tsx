@@ -1,7 +1,6 @@
 import { BellOff, RotateCcw, Settings2 } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 
 import { useAuth } from "@/features/auth";
 import { Button } from "@/shared/ui/button";
@@ -9,34 +8,46 @@ import { Button } from "@/shared/ui/button";
 import type {
   NotificationRead,
   NotificationReadFilter,
+  NotificationScope,
   NotificationSort,
 } from "./api/notifications-api";
-import { invitationPath } from "./model/invitation-path";
+import {
+  notificationTarget,
+  type NotificationTarget,
+} from "./model/notification-target";
 import { useDeleteNotifications } from "./model/use-delete-notifications";
 import { useListNotifications } from "./model/use-list-notifications";
-import { useMarkNotificationRead } from "./model/use-mark-notification-read";
 import { useMarkNotificationsRead } from "./model/use-mark-notifications-read";
+import { useOpenNotification } from "./model/use-open-notification";
 import { NotificationBulkBar } from "./ui/notification-bulk-bar";
 import { NotificationCard } from "./ui/notification-card";
 import { NotificationsToolbar } from "./ui/notifications-toolbar";
 
-function NotificationsUserPage({ userId }: { userId: string }) {
+function NotificationsUserPage({
+  userId,
+  workspaceId,
+}: {
+  userId: string;
+  workspaceId: string | null;
+}) {
   const { t } = useTranslation("notifications");
-  const navigate = useNavigate();
+  const [scope, setScope] = useState<NotificationScope>(
+    workspaceId ? "workspace" : "personal",
+  );
   const [search, setSearch] = useState("");
   const [read, setRead] = useState<NotificationReadFilter>("all");
   const [sort, setSort] = useState<NotificationSort>("newest");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [actionError, setActionError] = useState<"actionError" | null>(null);
   const deferredSearch = useDeferredValue(search.trim());
-  const notificationsQuery = useListNotifications(userId, {
+  const notificationsQuery = useListNotifications(userId, scope, workspaceId, {
     search: deferredSearch,
     read,
     sort,
   });
-  const markRead = useMarkNotificationRead(userId);
-  const markSelectedRead = useMarkNotificationsRead(userId);
-  const deleteSelected = useDeleteNotifications(userId);
+  const open = useOpenNotification(userId, scope);
+  const markSelectedRead = useMarkNotificationsRead(userId, scope, workspaceId);
+  const deleteSelected = useDeleteNotifications(userId, scope, workspaceId);
   const items =
     notificationsQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const unreadCount = notificationsQuery.data?.pages[0]?.unread_count ?? 0;
@@ -46,13 +57,18 @@ function NotificationsUserPage({ userId }: { userId: string }) {
   const allSelected =
     items.length > 0 && visibleSelectedIds.length === items.length;
   const actionBusy =
-    markRead.isPending ||
-    markSelectedRead.isPending ||
-    deleteSelected.isPending;
+    open.isPending || markSelectedRead.isPending || deleteSelected.isPending;
   const hasActiveFilter = Boolean(search.trim()) || read !== "all";
 
   function clearSelection() {
     setSelectedIds(new Set());
+  }
+
+  function changeScope(value: NotificationScope) {
+    if (value === "workspace" && !workspaceId) return;
+    setScope(value);
+    setActionError(null);
+    clearSelection();
   }
 
   function toggleSelection(id: string) {
@@ -82,17 +98,19 @@ function NotificationsUserPage({ userId }: { userId: string }) {
     clearSelection();
   }
 
-  async function openInvitation(notification: NotificationRead, path: string) {
+  async function openNotification(
+    notification: NotificationRead,
+    target: NotificationTarget,
+  ) {
     if (actionBusy) return;
     setActionError(null);
-    if (notification.read_at === null) {
-      try {
-        await markRead.mutateAsync(notification.id);
-      } catch {
-        // Opening the invitation still works when read-state sync fails.
+    try {
+      if (!(await open.openNotification(notification, target))) {
+        setActionError("actionError");
       }
+    } catch {
+      setActionError("actionError");
     }
-    void navigate(path);
   }
 
   async function markSelectionRead() {
@@ -150,6 +168,24 @@ function NotificationsUserPage({ userId }: { userId: string }) {
       <div
         className={`mx-auto max-w-6xl px-4 pt-6 sm:px-6 lg:px-8 ${visibleSelectedIds.length ? "pb-36" : "pb-10"}`}
       >
+        <div
+          aria-label={t("scopeLabel")}
+          className="mb-5 flex border-b border-line"
+          role="group"
+        >
+          {(["workspace", "personal"] as const).map((value) => (
+            <button
+              key={value}
+              aria-pressed={scope === value}
+              className={`-mb-px min-h-11 border-b-2 px-4 text-sm font-medium transition-colors focus-visible:rounded-t-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50 ${scope === value ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink"}`}
+              disabled={value === "workspace" && !workspaceId}
+              onClick={() => changeScope(value)}
+              type="button"
+            >
+              {t(value === "workspace" ? "workspaceScope" : "personalScope")}
+            </button>
+          ))}
+        </div>
         <NotificationsToolbar
           onReadChange={changeRead}
           onSearchChange={changeSearch}
@@ -235,15 +271,15 @@ function NotificationsUserPage({ userId }: { userId: string }) {
             </label>
             <div className="mt-2 grid gap-3">
               {items.map((notification) => {
-                const path = invitationPath(notification);
+                const target = notificationTarget(notification);
                 return (
                   <NotificationCard
                     key={notification.id}
                     busy={actionBusy}
                     notification={notification}
                     onOpen={
-                      path
-                        ? () => void openInvitation(notification, path)
+                      target
+                        ? () => void openNotification(notification, target)
                         : undefined
                     }
                     onSelect={toggleSelection}
@@ -283,9 +319,15 @@ function NotificationsUserPage({ userId }: { userId: string }) {
 }
 
 function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, workspaceId } = useAuth();
   const userId = user?.id ?? "";
-  return <NotificationsUserPage key={userId} userId={userId} />;
+  return (
+    <NotificationsUserPage
+      key={`${userId}:${workspaceId ?? "none"}`}
+      userId={userId}
+      workspaceId={workspaceId}
+    />
+  );
 }
 
 export const Component = NotificationsPage;

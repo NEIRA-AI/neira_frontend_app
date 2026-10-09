@@ -1,5 +1,8 @@
 const ru = {
   title: "Уведомления",
+  scopeLabel: "Тип уведомлений",
+  workspaceScope: "Текущее пространство",
+  personalScope: "Личные приглашения",
   unreadCount: "Непрочитанных: {{count}}",
   settings: "Настройки уведомлений",
   settingsSoon: "Настройки уведомлений скоро появятся",
@@ -31,6 +34,9 @@ const ru = {
 
 const en = {
   title: "Notifications",
+  scopeLabel: "Notification type",
+  workspaceScope: "Current workspace",
+  personalScope: "Personal invitations",
   unreadCount: "Unread: {{count}}",
   settings: "Notification settings",
   settingsSoon: "Notification settings are coming soon",

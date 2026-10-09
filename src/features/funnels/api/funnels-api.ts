@@ -3,6 +3,8 @@ import type { components } from "@/shared/api/generated/schema";
 
 export type StatusRead = components["schemas"]["StatusRead"];
 export type FunnelRead = components["schemas"]["FunnelRead"];
+export type FunnelDeletionImpact =
+  components["schemas"]["FunnelDeletionImpact"];
 export type CreateFunnelInput = components["schemas"]["FunnelCreate"];
 export type UpdateFunnelInput = components["schemas"]["FunnelUpdate"];
 
@@ -47,6 +49,16 @@ export async function updateFunnel(
 
 export async function deleteFunnel(id: string): Promise<void> {
   await api.delete(`/funnels/${encodeURIComponent(id)}`, { workspace: true });
+}
+
+export async function getFunnelDeletionImpact(
+  id: string,
+): Promise<FunnelDeletionImpact> {
+  const { data } = await api.get<FunnelDeletionImpact>(
+    `/funnels/${encodeURIComponent(id)}/deletion-impact`,
+    { workspace: true },
+  );
+  return data;
 }
 
 export async function updateStatus(

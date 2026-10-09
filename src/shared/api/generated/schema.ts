@@ -116,6 +116,25 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
+    /** Update Me */
+    patch: operations["update_me_api_v1_auth_me_patch"];
+    trace?: never;
+  };
+  "/api/v1/auth/me/avatar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Upload Avatar */
+    post: operations["upload_avatar_api_v1_auth_me_avatar_post"];
+    /** Delete Avatar */
+    delete: operations["delete_avatar_api_v1_auth_me_avatar_delete"];
+    options?: never;
+    head?: never;
     patch?: never;
     trace?: never;
   };
@@ -394,6 +413,128 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/channels/validate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Validate Channel */
+    post: operations["validate_channel_api_v1_channels_validate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/channels": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Channels */
+    get: operations["list_channels_api_v1_channels_get"];
+    put?: never;
+    /** Create Channel */
+    post: operations["create_channel_api_v1_channels_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/channels/{channel_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Channel */
+    get: operations["get_channel_api_v1_channels__channel_id__get"];
+    put?: never;
+    post?: never;
+    /** Delete Channel */
+    delete: operations["delete_channel_api_v1_channels__channel_id__delete"];
+    options?: never;
+    head?: never;
+    /** Update Channel */
+    patch: operations["update_channel_api_v1_channels__channel_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/channels/{channel_id}/check": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Check Channel */
+    post: operations["check_channel_api_v1_channels__channel_id__check_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/channels/{channel_id}/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refresh Channel */
+    post: operations["refresh_channel_api_v1_channels__channel_id__refresh_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/channels/{channel_id}/disconnect": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Disconnect Channel */
+    post: operations["disconnect_channel_api_v1_channels__channel_id__disconnect_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/channels/{channel_id}/reconnect": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reconnect Channel */
+    post: operations["reconnect_channel_api_v1_channels__channel_id__reconnect_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/funnels": {
     parameters: {
       query?: never;
@@ -429,6 +570,23 @@ export interface paths {
     head?: never;
     /** Update Funnel */
     patch: operations["update_funnel_api_v1_funnels__funnel_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/funnels/{funnel_id}/deletion-impact": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Funnel Deletion Impact */
+    get: operations["get_funnel_deletion_impact_api_v1_funnels__funnel_id__deletion_impact_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/v1/funnels/{funnel_id}/statuses": {
@@ -623,12 +781,118 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AvatarResponse */
+    AvatarResponse: {
+      /** Avatar Url */
+      avatar_url: string;
+    };
+    /** Body_upload_avatar_api_v1_auth_me_avatar_post */
+    Body_upload_avatar_api_v1_auth_me_avatar_post: {
+      /** File */
+      file: string;
+    };
     /** ChangePasswordRequest */
     ChangePasswordRequest: {
       /** Current Password */
       current_password: string;
       /** New Password */
       new_password: string;
+    };
+    /** ChannelCreate */
+    ChannelCreate: {
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: "telegram_bot" | "vk_community";
+      /** Token */
+      token: string;
+      /** Group Id */
+      group_id?: number | null;
+      /** Name */
+      name?: string | null;
+      /** Funnel Id */
+      funnel_id?: string | null;
+    };
+    /** ChannelRead */
+    ChannelRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Workspace Id
+       * Format: uuid
+       */
+      workspace_id: string;
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: "telegram_bot" | "vk_community";
+      /** External Id */
+      external_id: string;
+      /** Name */
+      name: string;
+      /** Profile */
+      profile: {
+        [key: string]: unknown;
+      };
+      /** Funnel Id */
+      funnel_id: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "active" | "disconnected" | "needs_reconnect" | "pending";
+      /** Last Checked At */
+      last_checked_at: string | null;
+      /** Last Error Code */
+      last_error_code: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** ChannelReconnect */
+    ChannelReconnect: {
+      /** Token */
+      token: string;
+    };
+    /** ChannelUpdate */
+    ChannelUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Funnel Id */
+      funnel_id?: string | null;
+    };
+    /** ChannelValidate */
+    ChannelValidate: {
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: "telegram_bot" | "vk_community";
+      /** Token */
+      token: string;
+      /** Group Id */
+      group_id?: number | null;
+    };
+    /** ChannelValidationRead */
+    ChannelValidationRead: {
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: "telegram_bot" | "vk_community";
+      /** External Id */
+      external_id: string;
+      /** Profile */
+      profile: {
+        [key: string]: unknown;
+      };
     };
     /** CurrentWorkspaceResponse */
     CurrentWorkspaceResponse: {
@@ -648,6 +912,11 @@ export interface components {
       name: string;
       /** Statuses */
       statuses: components["schemas"]["StatusCreate"][];
+    };
+    /** FunnelDeletionImpact */
+    FunnelDeletionImpact: {
+      /** Active Channels */
+      active_channels: components["schemas"]["LinkedChannelRead"][];
     };
     /** FunnelRead */
     FunnelRead: {
@@ -769,6 +1038,16 @@ export interface components {
       /** Recipient Name */
       recipient_name?: string | null;
     };
+    /** LinkedChannelRead */
+    LinkedChannelRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+    };
     /** LoginRequest */
     LoginRequest: {
       /**
@@ -873,6 +1152,13 @@ export interface components {
     NotificationSelection: {
       /** Ids */
       ids: string[];
+    };
+    /** ProfileUpdateRequest */
+    ProfileUpdateRequest: {
+      /** Name */
+      name: string;
+      /** Telegram */
+      telegram: string | null;
     };
     /** RegisterRequest */
     RegisterRequest: {
@@ -1232,6 +1518,90 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["MeResponse"];
         };
+      };
+    };
+  };
+  update_me_api_v1_auth_me_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_avatar_api_v1_auth_me_avatar_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_avatar_api_v1_auth_me_avatar_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AvatarResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_avatar_api_v1_auth_me_avatar_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -1800,6 +2170,344 @@ export interface operations {
       };
     };
   };
+  validate_channel_api_v1_channels_validate_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChannelValidate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelValidationRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_channels_api_v1_channels_get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_channel_api_v1_channels_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChannelCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_channel_api_v1_channels__channel_id__get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_channel_api_v1_channels__channel_id__delete: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_channel_api_v1_channels__channel_id__patch: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChannelUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  check_channel_api_v1_channels__channel_id__check_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  refresh_channel_api_v1_channels__channel_id__refresh_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  disconnect_channel_api_v1_channels__channel_id__disconnect_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reconnect_channel_api_v1_channels__channel_id__reconnect_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChannelReconnect"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_funnels_api_v1_funnels_get: {
     parameters: {
       query?: never;
@@ -1954,6 +2662,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FunnelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_funnel_deletion_impact_api_v1_funnels__funnel_id__deletion_impact_get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        funnel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FunnelDeletionImpact"];
         };
       };
       /** @description Validation Error */
@@ -2153,8 +2894,11 @@ export interface operations {
         sort?: "newest" | "oldest";
         limit?: number;
         cursor?: string | null;
+        scope?: "workspace" | "personal";
       };
-      header?: never;
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
       path?: never;
       cookie?: never;
     };
@@ -2182,8 +2926,12 @@ export interface operations {
   };
   unread_count_api_v1_notifications_unread_count_get: {
     parameters: {
-      query?: never;
-      header?: never;
+      query?: {
+        scope?: "workspace" | "personal";
+      };
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
       path?: never;
       cookie?: never;
     };
@@ -2196,6 +2944,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["UnreadCount"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -2222,8 +2979,12 @@ export interface operations {
   };
   mark_selected_read_api_v1_notifications_read_patch: {
     parameters: {
-      query?: never;
-      header?: never;
+      query?: {
+        scope?: "workspace" | "personal";
+      };
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
       path?: never;
       cookie?: never;
     };
@@ -2253,8 +3014,12 @@ export interface operations {
   };
   delete_selected_api_v1_notifications_bulk_delete_post: {
     parameters: {
-      query?: never;
-      header?: never;
+      query?: {
+        scope?: "workspace" | "personal";
+      };
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
       path?: never;
       cookie?: never;
     };
@@ -2284,8 +3049,12 @@ export interface operations {
   };
   mark_read_api_v1_notifications__notification_id__read_patch: {
     parameters: {
-      query?: never;
-      header?: never;
+      query?: {
+        scope?: "workspace" | "personal";
+      };
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
       path: {
         notification_id: string;
       };
@@ -2313,8 +3082,12 @@ export interface operations {
   };
   delete_notification_api_v1_notifications__notification_id__delete: {
     parameters: {
-      query?: never;
-      header?: never;
+      query?: {
+        scope?: "workspace" | "personal";
+      };
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
       path: {
         notification_id: string;
       };

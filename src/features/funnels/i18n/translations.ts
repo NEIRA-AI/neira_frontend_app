@@ -60,6 +60,10 @@ const ru = {
   deleteFunnelTitle: "Удалить воронку?",
   deleteFunnelDescription:
     "Воронка и её статусы исчезнут с доски. Их история сохранится для будущих обращений.",
+  checkingLinkedChannels: "Проверяем связанные каналы…",
+  linkedChannelsLoadError: "Не удалось проверить связанные каналы.",
+  linkedChannelsWillStop:
+    "Подключённые каналы ({{count}}) остановятся, а сохранённые доступы будут удалены. Чтобы возобновить работу, переподключите их.",
   deleteLastFunnel: "Последнюю воронку пространства удалить нельзя.",
   editStatusTitle: "Изменить статус",
   editStatusDescription:
@@ -139,6 +143,10 @@ const en = {
   deleteFunnelTitle: "Delete funnel?",
   deleteFunnelDescription:
     "The funnel and its statuses will leave the board. Their history is kept for future conversations.",
+  checkingLinkedChannels: "Checking linked channels…",
+  linkedChannelsLoadError: "Could not check linked channels.",
+  linkedChannelsWillStop:
+    "Connected channels ({{count}}) will stop and their saved access will be removed. Reconnect them to resume operation.",
   deleteLastFunnel: "The last funnel in a workspace cannot be deleted.",
   editStatusTitle: "Edit status",
   editStatusDescription:

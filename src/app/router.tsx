@@ -69,21 +69,36 @@ export const router = createBrowserRouter([
                 element: <WorkspaceRequiredRoute />,
                 children: [
                   {
-                    lazy: () => import("@/features/channels/channels-route"),
+                    path: ROUTES.CHANNELS,
+                    lazy: () => import("@/features/channels/channels.page"),
+                  },
+                  {
+                    path: ROUTES.CHANNELS_CONNECT,
+                    lazy: () =>
+                      import("@/features/channels/connect-channel.page"),
+                  },
+                  {
+                    path: ROUTES.CHANNEL_DETAILS,
+                    lazy: () => import("@/features/channels/channel.page"),
+                  },
+                  {
+                    lazy: () =>
+                      import("@/features/channels-preview/channels-preview-route"),
                     children: [
                       {
-                        path: ROUTES.CHANNELS,
-                        lazy: () => import("@/features/channels/channels.page"),
+                        path: ROUTES.CHANNELS_PREVIEW,
+                        lazy: () =>
+                          import("@/features/channels-preview/channels-preview.page"),
                       },
                       {
-                        path: ROUTES.CHANNELS_CONNECT,
+                        path: ROUTES.CHANNELS_PREVIEW_CONNECT,
                         lazy: () =>
-                          import("@/features/channels/connect/connect-channel.page"),
+                          import("@/features/channels-preview/connect/connect-channel-preview.page"),
                       },
                       {
-                        path: ROUTES.CHANNEL_DETAILS,
+                        path: ROUTES.CHANNELS_PREVIEW_DETAILS,
                         lazy: () =>
-                          import("@/features/channels/channel-edit.page"),
+                          import("@/features/channels-preview/channel-preview-edit.page"),
                       },
                     ],
                   },

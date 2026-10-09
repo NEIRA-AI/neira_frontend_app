@@ -78,7 +78,7 @@ export function NotificationCard({
       />
       {onOpen ? (
         <button
-          className="group flex min-w-0 flex-1 items-start justify-between gap-4 text-left focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait"
+          className="group flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-4 text-left focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait"
           disabled={busy}
           onClick={onOpen}
           type="button"

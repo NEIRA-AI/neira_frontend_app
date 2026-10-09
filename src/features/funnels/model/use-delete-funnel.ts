@@ -1,12 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { deleteFunnel, funnelsQueryKey } from "../api/funnels-api";
+import { deleteFunnel } from "../api/funnels-api";
 
-export function useDeleteFunnel(workspaceId: string) {
+export function useDeleteFunnel() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteFunnel,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: funnelsQueryKey(workspaceId) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["private"] }),
   });
 }

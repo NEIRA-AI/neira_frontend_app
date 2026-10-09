@@ -1,0 +1,47 @@
+@keyframes channel-preview-guide-overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes channel-preview-guide-overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes channel-preview-guide-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes channel-preview-guide-panel-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.channel-preview-guide-overlay[data-state="open"] {
+  animation: channel-preview-guide-overlay-in 200ms ease-out both;
+}
+
+.channel-preview-guide-overlay[data-state="closed"] {
+  animation: channel-preview-guide-overlay-out 160ms ease-in both;
+}
+
+.channel-preview-guide-panel[data-state="open"] {
+  animation: channel-preview-guide-panel-in 240ms cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+.channel-preview-guide-panel[data-state="closed"] {
+  animation: channel-preview-guide-panel-out 180ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .channel-preview-guide-overlay,
+  .channel-preview-guide-panel {
+    animation: none !important;
+  }
+}

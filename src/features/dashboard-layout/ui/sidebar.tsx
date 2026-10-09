@@ -198,8 +198,17 @@ export function Sidebar({
   onToggleAccount,
 }: SidebarProps) {
   const { t } = useTranslation("dashboard");
-  const { user } = useAuth();
-  const unreadNotifications = useUnreadNotificationCount(user?.id ?? "");
+  const { user, workspaceId } = useAuth();
+  const workspaceUnread = useUnreadNotificationCount(
+    user?.id ?? "",
+    "workspace",
+    workspaceId,
+  );
+  const personalUnread = useUnreadNotificationCount(
+    user?.id ?? "",
+    "personal",
+    workspaceId,
+  );
 
   const sections: { label: string; items: NavigationItem[] }[] = [
     {
@@ -228,7 +237,7 @@ export function Sidebar({
           label: t("notifications"),
           to: ROUTES.NOTIFICATIONS,
           icon: Bell,
-          unreadCount: unreadNotifications.data ?? 0,
+          unreadCount: (workspaceUnread.data ?? 0) + (personalUnread.data ?? 0),
         },
         { label: t("settings"), to: ROUTES.SETTINGS, icon: settingsIcon },
       ],

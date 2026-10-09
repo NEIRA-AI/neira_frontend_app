@@ -4,6 +4,7 @@ import { Button } from "@/shared/ui/button";
 
 import type { FunnelRead } from "../api/funnels-api";
 import { useDeleteFunnel } from "../model/use-delete-funnel";
+import { useFunnelDeletionImpact } from "../model/use-funnel-deletion-impact";
 import { FunnelDialog } from "./funnel-dialog";
 
 export function DeleteFunnelDialog({
@@ -18,10 +19,11 @@ export function DeleteFunnelDialog({
   onDeleted: () => void;
 }) {
   const { t } = useTranslation("funnels");
-  const remove = useDeleteFunnel(workspaceId);
+  const remove = useDeleteFunnel();
+  const impact = useFunnelDeletionImpact(workspaceId, funnel.id);
 
   async function confirm() {
-    if (remove.isPending) return;
+    if (remove.isPending || impact.isFetching || !impact.isSuccess) return;
     try {
       await remove.mutateAsync(funnel.id);
       onDeleted();
@@ -40,6 +42,38 @@ export function DeleteFunnelDialog({
       <p className="mt-5 rounded-xl bg-danger-soft px-4 py-3 text-sm font-semibold text-danger">
         {funnel.name}
       </p>
+      {impact.isFetching && (
+        <p className="mt-4 text-sm text-muted" role="status">
+          {t("checkingLinkedChannels")}
+        </p>
+      )}
+      {impact.isError && (
+        <div
+          className="mt-4 flex items-center gap-3 text-sm text-danger"
+          role="alert"
+        >
+          <span>{t("linkedChannelsLoadError")}</span>
+          <Button
+            onClick={() => void impact.refetch()}
+            size="sm"
+            variant="outline"
+          >
+            {t("retry")}
+          </Button>
+        </div>
+      )}
+      {impact.isSuccess &&
+        !impact.isFetching &&
+        impact.data.active_channels.length > 0 && (
+          <p
+            className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger"
+            role="alert"
+          >
+            {t("linkedChannelsWillStop", {
+              count: impact.data.active_channels.length,
+            })}
+          </p>
+        )}
       {remove.isError && (
         <p className="mt-4 text-sm text-danger" role="alert">
           {t("actionError")}
@@ -50,7 +84,7 @@ export function DeleteFunnelDialog({
           {t("cancel")}
         </Button>
         <Button
-          disabled={remove.isPending}
+          disabled={remove.isPending || impact.isFetching || !impact.isSuccess}
           onClick={() => void confirm()}
           variant="danger"
         >
