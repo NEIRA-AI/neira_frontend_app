@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router";
 import { Bell, ListFilter, UsersRound, type LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
+import { useUnreadChatCount } from "@/features/chats";
 import { useUnreadNotificationCount } from "@/features/notifications";
 import channelsIcon from "@/shared/assets/channels.svg";
 import { ROUTES } from "@/shared/config/routes";
@@ -35,6 +36,7 @@ type NavigationItem = {
   to?: string;
   dimmed?: boolean;
   unreadCount?: number;
+  unreadLabel?: string;
 };
 
 function NavigationIcon({ icon }: { icon: NavigationItem["icon"] }) {
@@ -101,7 +103,7 @@ function SidebarNavigationItem({
   onNavigate?: () => void;
 }) {
   const { t } = useTranslation("dashboard");
-  const { dimmed, icon, label, to, unreadCount = 0 } = item;
+  const { dimmed, icon, label, to, unreadCount = 0, unreadLabel } = item;
   const base = collapsed
     ? "relative flex size-14 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
     : "flex h-[41px] w-full items-center gap-3 border-l-4 border-transparent pr-3 pl-5 text-left text-[14px] font-medium leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand";
@@ -115,7 +117,7 @@ function SidebarNavigationItem({
       {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
       {unreadCount > 0 && (
         <Badge
-          aria-label={t("unreadNotifications", { count: unreadCount })}
+          aria-label={unreadLabel}
           className={
             collapsed
               ? "absolute right-0 top-0 min-w-4 justify-center px-1 py-0.5 text-[10px]"
@@ -135,7 +137,7 @@ function SidebarNavigationItem({
         aria-label={
           collapsed
             ? unreadCount > 0
-              ? `${label}, ${t("unreadNotifications", { count: unreadCount })}`
+              ? `${label}, ${unreadLabel}`
               : label
             : undefined
         }
@@ -209,6 +211,7 @@ export function Sidebar({
     "personal",
     workspaceId,
   );
+  const unreadChats = useUnreadChatCount(workspaceId ?? "");
 
   const sections: { label: string; items: NavigationItem[] }[] = [
     {
@@ -226,7 +229,13 @@ export function Sidebar({
       items: [
         { label: t("aiAgents"), icon: robotIcon, dimmed: true },
         { label: t("knowledgeBase"), icon: booksIcon },
-        { label: t("messages"), icon: messagesIcon },
+        {
+          label: t("messages"),
+          to: ROUTES.MESSAGES,
+          icon: messagesIcon,
+          unreadCount: unreadChats.data ?? 0,
+          unreadLabel: t("unreadMessages", { count: unreadChats.data ?? 0 }),
+        },
       ],
     },
     {
@@ -239,6 +248,9 @@ export function Sidebar({
           to: ROUTES.NOTIFICATIONS,
           icon: Bell,
           unreadCount: (workspaceUnread.data ?? 0) + (personalUnread.data ?? 0),
+          unreadLabel: t("unreadNotifications", {
+            count: (workspaceUnread.data ?? 0) + (personalUnread.data ?? 0),
+          }),
         },
         { label: t("settings"), to: ROUTES.SETTINGS, icon: settingsIcon },
       ],

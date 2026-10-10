@@ -115,6 +115,14 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/features/funnels/funnels.page"),
                   },
                   {
+                    path: ROUTES.MESSAGES,
+                    lazy: () => import("@/features/chats/chats.page"),
+                  },
+                  {
+                    path: ROUTES.MESSAGE_CONVERSATION,
+                    lazy: () => import("@/features/chats/chats.page"),
+                  },
+                  {
                     path: ROUTES.SETTINGS,
                     lazy: () => import("@/features/settings/settings.page"),
                   },

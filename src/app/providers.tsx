@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import { AuthProvider, refreshSession } from "@/features/auth";
+import { ChatNotifications } from "@/features/chats";
 import { NotificationStream } from "@/features/notifications";
 import { installAuthInterceptors } from "@/shared/api/auth-interceptors";
 
@@ -13,7 +14,7 @@ export function Providers({ children }: PropsWithChildren) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <NotificationStream />
-        {children}
+        <ChatNotifications>{children}</ChatNotifications>
       </AuthProvider>
     </QueryClientProvider>
   );
