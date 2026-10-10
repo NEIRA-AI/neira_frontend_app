@@ -6,6 +6,7 @@ import { useAuth } from "@/features/auth";
 import { Button } from "@/shared/ui/button";
 
 import type { StatusRead } from "./api/funnels-api";
+import { useListFunnelInquiries } from "./model/use-list-funnel-inquiries";
 import { useListFunnels } from "./model/use-list-funnels";
 import { useMakeEntryStatus } from "./model/use-make-entry-status";
 import { useReorderStatuses } from "./model/use-reorder-statuses";
@@ -39,6 +40,13 @@ function FunnelsPage() {
   const reorder = useReorderStatuses(workspaceId ?? "");
   const funnels = funnelsQuery.data ?? [];
   const funnel = funnels.find((item) => item.id === selectedId) ?? funnels[0];
+  const inquiriesQuery = useListFunnelInquiries(
+    workspaceId ?? "",
+    funnel?.id ?? "",
+  );
+  const inquiryPages = inquiriesQuery.data?.pages ?? [];
+  const inquiries = inquiryPages.flatMap((page) => page.items);
+  const inquiryCounts = inquiryPages[0]?.status_counts ?? null;
   const actionBusy = makeEntry.isPending || reorder.isPending;
 
   function selectFunnel(id: string) {
@@ -72,7 +80,7 @@ function FunnelsPage() {
       <header className="sticky top-16 z-20 border-b border-line bg-page lg:top-0">
         <div className="flex min-h-20 flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold text-ink">{t("title")}</h1>
-          <span title={t("availableWithAppeals")}>
+          <span title={t("manualCreationUnavailable")}>
             <Button disabled size="sm">
               <Plus aria-hidden="true" className="size-4" />
               {t("createAppeal")}
@@ -127,9 +135,31 @@ function FunnelsPage() {
               {reorder.isError ? t("reorderError") : t("actionError")}
             </p>
           )}
+          {inquiriesQuery.isError && (
+            <div className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger sm:mx-6 lg:mx-8">
+              <p role="alert">{t("inquiriesLoadError")}</p>
+              <Button
+                onClick={() => void inquiriesQuery.refetch()}
+                size="sm"
+                variant="outline"
+              >
+                <RotateCcw aria-hidden="true" className="size-4" />
+                {t("retry")}
+              </Button>
+            </div>
+          )}
           <FunnelBoard
             busy={actionBusy}
             canEdit={canEdit}
+            hasMoreInquiries={Boolean(inquiriesQuery.hasNextPage)}
+            inquiries={inquiries}
+            inquiryCounts={inquiryCounts}
+            inquiriesFailed={
+              inquiriesQuery.isError && inquiryPages.length === 0
+            }
+            inquiriesLoading={inquiriesQuery.isPending}
+            loadingMoreInquiries={inquiriesQuery.isFetchingNextPage}
+            onLoadMoreInquiries={() => void inquiriesQuery.fetchNextPage()}
             onDelete={(status) => setDialog({ kind: "deleteStatus", status })}
             onEdit={(status) => setDialog({ kind: "editStatus", status })}
             onMakeEntry={(status) => void changeEntry(status)}

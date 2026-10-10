@@ -73,6 +73,14 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/features/channels/channels.page"),
                   },
                   {
+                    path: ROUTES.CONTACTS,
+                    lazy: () => import("@/features/contacts/contacts.page"),
+                  },
+                  {
+                    path: ROUTES.CONTACT_DETAILS,
+                    lazy: () => import("@/features/contacts/contact.page"),
+                  },
+                  {
                     path: ROUTES.CHANNELS_CONNECT,
                     lazy: () =>
                       import("@/features/channels/connect-channel.page"),

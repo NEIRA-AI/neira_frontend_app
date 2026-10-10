@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 
 import type { FunnelRead, StatusRead } from "../api/funnels-api";
+import { deletionErrorKey } from "../model/deletion-error";
 import { useCreateFunnel } from "../model/use-create-funnel";
 import { useUpdateFunnel } from "../model/use-update-funnel";
 import { FunnelDialog } from "./funnel-dialog";
@@ -91,6 +92,7 @@ export function FunnelEditorDialog({
   const [submitted, setSubmitted] = useState(false);
   const busy = create.isPending || update.isPending;
   const failed = funnel ? update.isError : create.isError;
+  const errorKey = deletionErrorKey(funnel ? update.error : create.error);
 
   const validName = name.trim().length > 0;
   const validStatuses =
@@ -336,7 +338,11 @@ export function FunnelEditorDialog({
         </div>
         {failed && (
           <p className="text-sm text-danger" role="alert">
-            {t("actionError")}
+            {t(
+              errorKey === "openInquiries"
+                ? "statusHasOpenInquiries"
+                : errorKey,
+            )}
           </p>
         )}
         <div className="flex justify-end gap-3 border-t border-line pt-4">

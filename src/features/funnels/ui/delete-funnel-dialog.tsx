@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/ui/button";
 
 import type { FunnelRead } from "../api/funnels-api";
+import { deletionErrorKey } from "../model/deletion-error";
 import { useDeleteFunnel } from "../model/use-delete-funnel";
 import { useFunnelDeletionImpact } from "../model/use-funnel-deletion-impact";
 import { FunnelDialog } from "./funnel-dialog";
@@ -21,6 +22,7 @@ export function DeleteFunnelDialog({
   const { t } = useTranslation("funnels");
   const remove = useDeleteFunnel();
   const impact = useFunnelDeletionImpact(workspaceId, funnel.id);
+  const errorKey = deletionErrorKey(remove.error);
 
   async function confirm() {
     if (remove.isPending || impact.isFetching || !impact.isSuccess) return;
@@ -76,7 +78,9 @@ export function DeleteFunnelDialog({
         )}
       {remove.isError && (
         <p className="mt-4 text-sm text-danger" role="alert">
-          {t("actionError")}
+          {t(
+            errorKey === "openInquiries" ? "funnelHasOpenInquiries" : errorKey,
+          )}
         </p>
       )}
       <div className="mt-6 flex flex-wrap justify-end gap-3">

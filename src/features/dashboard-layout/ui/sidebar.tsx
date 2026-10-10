@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router";
-import { Bell, ListFilter, type LucideIcon } from "lucide-react";
+import { Bell, ListFilter, UsersRound, type LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
 import { useUnreadNotificationCount } from "@/features/notifications";
@@ -217,6 +217,7 @@ export function Sidebar({
         { label: t("home"), to: ROUTES.HOME, icon: beginningIcon },
         { label: t("statistics"), icon: statisticIcon },
         { label: t("channels"), to: ROUTES.CHANNELS, icon: channelsIcon },
+        { label: t("contactDirectory"), to: ROUTES.CONTACTS, icon: UsersRound },
         { label: t("funnels"), to: ROUTES.FUNNELS, icon: ListFilter },
       ],
     },

@@ -113,7 +113,7 @@ export function FunnelToolbar({
             <Columns3 aria-hidden="true" className="size-4" />
             {t("kanbanView")}
           </button>
-          <span title={t("availableWithAppeals")}>
+          <span title={t("tableViewUnavailable")}>
             <button
               className="flex h-8 cursor-not-allowed items-center gap-2 rounded-lg px-3 text-sm text-muted opacity-60"
               disabled
@@ -134,7 +134,7 @@ export function FunnelToolbar({
             className="h-9 w-full cursor-not-allowed rounded-xl border border-line bg-surface pr-3 pl-9 text-sm text-ink placeholder:text-muted/70"
             placeholder={t("searchAppeals")}
             readOnly
-            title={t("availableWithAppeals")}
+            title={t("searchUnavailable")}
           />
         </div>
       </div>

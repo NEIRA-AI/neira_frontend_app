@@ -8,6 +8,8 @@ export const ROUTES = {
   VERIFY: "/auth/verify",
   INVITATION: "/invites/:token",
   CHANNELS: "/channels",
+  CONTACTS: "/contacts",
+  CONTACT_DETAILS: "/contacts/:contactId",
   CHANNELS_CONNECT: "/channels/connect",
   CHANNEL_DETAILS: "/channels/:channelId",
   CHANNELS_PREVIEW: "/preview/channels",
@@ -21,6 +23,9 @@ export const ROUTES = {
 export type PathParams = {
   [ROUTES.CHANNEL_DETAILS]: {
     channelId: string;
+  };
+  [ROUTES.CONTACT_DETAILS]: {
+    contactId: string;
   };
   [ROUTES.CHANNELS_PREVIEW_DETAILS]: {
     channelId: string;
@@ -38,6 +43,10 @@ declare module "react-router" {
 
 export function channelDetailsPath(channelId: string) {
   return generatePath(ROUTES.CHANNEL_DETAILS, { channelId });
+}
+
+export function contactDetailsPath(contactId: string) {
+  return generatePath(ROUTES.CONTACT_DETAILS, { contactId });
 }
 
 export function channelPreviewDetailsPath(channelId: string) {

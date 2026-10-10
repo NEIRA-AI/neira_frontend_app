@@ -2,6 +2,7 @@ import { languageTranslations } from "@/features/change-language";
 import { themeTranslations } from "@/features/change-theme";
 import { authTranslations } from "@/features/auth";
 import { channelsTranslations } from "@/features/channels";
+import { contactsTranslations } from "@/features/contacts";
 import {
   channelEditPreviewTranslations,
   channelConnectPreviewTranslations,
@@ -26,6 +27,7 @@ const ru = {
   auth: authTranslations.ru,
   dashboard: dashboardTranslations.ru,
   channels: channelsTranslations.ru,
+  contacts: contactsTranslations.ru,
   channelsPreview: channelsPreviewTranslations.ru,
   channelEditPreview: channelEditPreviewTranslations.ru,
   channelConnectPreview: channelConnectPreviewTranslations.ru,
@@ -46,6 +48,7 @@ const en = {
   auth: authTranslations.en,
   dashboard: dashboardTranslations.en,
   channels: channelsTranslations.en,
+  contacts: contactsTranslations.en,
   channelsPreview: channelsPreviewTranslations.en,
   channelEditPreview: channelEditPreviewTranslations.en,
   channelConnectPreview: channelConnectPreviewTranslations.en,

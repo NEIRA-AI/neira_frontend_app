@@ -535,6 +535,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/contacts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Contacts */
+    get: operations["list_contacts_api_v1_contacts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/contacts/{contact_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Contact */
+    get: operations["get_contact_api_v1_contacts__contact_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/funnels": {
     parameters: {
       query?: never;
@@ -652,6 +686,23 @@ export interface paths {
     put?: never;
     /** Make Entry */
     post: operations["make_entry_api_v1_funnels__funnel_id__statuses__status_id__make_entry_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/inquiries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Inquiries */
+    get: operations["list_inquiries_api_v1_inquiries_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -894,6 +945,55 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    /** ContactDetail */
+    ContactDetail: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Display Name */
+      display_name: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /** Identities */
+      identities: components["schemas"]["ExternalIdentityRead"][];
+    };
+    /** ContactPage */
+    ContactPage: {
+      /** Items */
+      items: components["schemas"]["ContactSummary"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ContactSummary */
+    ContactSummary: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Display Name */
+      display_name: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
     /** CurrentWorkspaceResponse */
     CurrentWorkspaceResponse: {
       /**
@@ -905,6 +1005,25 @@ export interface components {
       name: string;
       /** Role */
       role: string;
+    };
+    /** ExternalIdentityRead */
+    ExternalIdentityRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Provider */
+      provider: string;
+      /** External User Id */
+      external_user_id: string;
+      /** Display Name */
+      display_name: string;
+      /**
+       * Last Seen At
+       * Format: date-time
+       */
+      last_seen_at: string;
     };
     /** FunnelCreate */
     FunnelCreate: {
@@ -969,6 +1088,55 @@ export interface components {
     HTTPValidationError: {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
+    };
+    /** InquiryPage */
+    InquiryPage: {
+      /** Items */
+      items: components["schemas"]["InquirySummary"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+      /** Status Counts */
+      status_counts: {
+        [key: string]: number;
+      };
+    };
+    /** InquirySummary */
+    InquirySummary: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Contact Id
+       * Format: uuid
+       */
+      contact_id: string;
+      /** Contact Name */
+      contact_name: string;
+      /**
+       * Funnel Id
+       * Format: uuid
+       */
+      funnel_id: string;
+      /** Funnel Name */
+      funnel_name: string;
+      /**
+       * Status Id
+       * Format: uuid
+       */
+      status_id: string;
+      /** Status Name */
+      status_name: string;
+      /** State */
+      state: string;
+      /**
+       * Opened At
+       * Format: date-time
+       */
+      opened_at: string;
+      /** Last Message Text */
+      last_message_text: string | null;
     };
     /** InvitationCreateRequest */
     InvitationCreateRequest: {
@@ -2508,6 +2676,73 @@ export interface operations {
       };
     };
   };
+  list_contacts_api_v1_contacts_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ContactPage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_contact_api_v1_contacts__contact_id__get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        contact_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ContactDetail"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_funnels_api_v1_funnels_get: {
     parameters: {
       query?: never;
@@ -2873,6 +3108,43 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FunnelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_inquiries_api_v1_inquiries_get: {
+    parameters: {
+      query?: {
+        funnel_id?: string | null;
+        contact_id?: string | null;
+        state?: ("open" | "closed") | null;
+        limit?: number;
+        cursor?: string | null;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InquiryPage"];
         };
       };
       /** @description Validation Error */

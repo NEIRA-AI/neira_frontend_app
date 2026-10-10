@@ -16,11 +16,23 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
+
+import { contactDetailsPath } from "@/shared/config/routes";
+import { Button } from "@/shared/ui/button";
 
 import type { StatusRead } from "../api/funnels-api";
+import type { InquirySummary } from "../api/inquiries-api";
 
 type BoardProps = {
   statuses: StatusRead[];
+  inquiries: InquirySummary[];
+  inquiryCounts: Record<string, number> | null;
+  inquiriesLoading: boolean;
+  inquiriesFailed: boolean;
+  hasMoreInquiries: boolean;
+  loadingMoreInquiries: boolean;
+  onLoadMoreInquiries: () => void;
   canEdit: boolean;
   busy: boolean;
   onEdit: (status: StatusRead) => void;
@@ -102,6 +114,11 @@ function StatusActions({
 type ColumnProps = {
   status: StatusRead;
   total: number;
+  inquiries: InquirySummary[];
+  inquiryCount: number | null;
+  inquiriesLoading: boolean;
+  inquiriesFailed: boolean;
+  hasMoreInquiries: boolean;
   canEdit: boolean;
   busy: boolean;
   onEdit: () => void;
@@ -144,9 +161,43 @@ function ColumnHint({
   );
 }
 
+function InquiryCard({ inquiry }: { inquiry: InquirySummary }) {
+  const { t } = useTranslation("funnels");
+  const contactName = inquiry.contact_name.trim() || t("unnamedContact");
+
+  return (
+    <Link
+      className="block rounded-xl border border-line bg-surface p-3 text-ink shadow-sm transition-colors hover:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
+      to={contactDetailsPath(inquiry.contact_id)}
+    >
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span
+          aria-hidden="true"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
+        >
+          {Array.from(contactName)[0]?.toUpperCase() ?? "?"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold" title={contactName}>
+            {contactName}
+          </p>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
+            {inquiry.last_message_text?.trim() || t("noMessage")}
+          </p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function StatusColumn({
   status,
   total,
+  inquiries,
+  inquiryCount,
+  inquiriesLoading,
+  inquiriesFailed,
+  hasMoreInquiries,
   canEdit,
   busy,
   onEdit,
@@ -205,7 +256,7 @@ function StatusColumn({
             />
           </h2>
           <span className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-full bg-surface/80 px-1.5 text-xs font-semibold leading-6 text-ink">
-            0
+            {inquiryCount ?? "—"}
           </span>
           {canEdit && (
             <StatusActions
@@ -218,13 +269,26 @@ function StatusColumn({
           )}
         </div>
       </header>
-      <div className="min-h-0 flex-1 px-2 pt-5 text-center">
-        <p className="text-xs leading-5 text-muted">{t("emptyColumn")}</p>
+      <div className="min-h-0 flex-1 space-y-2 px-2 pt-5">
+        {inquiries.map((inquiry) => (
+          <InquiryCard inquiry={inquiry} key={inquiry.id} />
+        ))}
+        {inquiries.length === 0 && (
+          <p className="text-center text-xs leading-5 text-muted">
+            {inquiriesLoading
+              ? t("loadingInquiries")
+              : inquiriesFailed
+                ? t("inquiriesLoadError")
+                : hasMoreInquiries && inquiryCount !== null && inquiryCount > 0
+                  ? t("moreInquiriesInColumn")
+                  : t("emptyColumn")}
+          </p>
+        )}
         <button
           aria-label={t("createAppeal")}
-          className="mt-2 flex h-9 w-full items-center justify-center gap-1 rounded-lg text-sm font-normal text-muted/70 transition-colors hover:bg-[var(--column-soft)] hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed motion-reduce:transition-none"
+          className="flex h-9 w-full items-center justify-center gap-1 rounded-lg text-sm font-normal text-muted/70 transition-colors hover:bg-[var(--column-soft)] hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed motion-reduce:transition-none"
           disabled
-          title={t("availableWithAppeals")}
+          title={t("manualCreationUnavailable")}
           type="button"
         >
           <Plus aria-hidden="true" className="size-4" />
@@ -257,6 +321,13 @@ function SortableStatusColumn({
 
 export function FunnelBoard({
   statuses,
+  inquiries,
+  inquiryCounts,
+  inquiriesLoading,
+  inquiriesFailed,
+  hasMoreInquiries,
+  loadingMoreInquiries,
+  onLoadMoreInquiries,
   canEdit,
   busy,
   onEdit,
@@ -274,6 +345,24 @@ export function FunnelBoard({
   const others = statuses
     .filter((status) => !status.is_entry)
     .sort((a, b) => a.position - b.position);
+
+  const inquiriesByStatus = new Map<string, InquirySummary[]>();
+  for (const inquiry of inquiries) {
+    const group = inquiriesByStatus.get(inquiry.status_id) ?? [];
+    group.push(inquiry);
+    inquiriesByStatus.set(inquiry.status_id, group);
+  }
+
+  function columnInquiries(statusId: string) {
+    return inquiriesByStatus.get(statusId) ?? [];
+  }
+
+  function columnCount(statusId: string) {
+    if (inquiryCounts) return inquiryCounts[statusId] ?? 0;
+    return inquiriesLoading || inquiriesFailed
+      ? null
+      : columnInquiries(statusId).length;
+  }
 
   const updateScrollButtons = useCallback(() => {
     const element = scrollRef.current;
@@ -369,6 +458,11 @@ export function FunnelBoard({
                 <StatusColumn
                   busy={busy}
                   canEdit={canEdit}
+                  inquiries={columnInquiries(entry.id)}
+                  inquiryCount={columnCount(entry.id)}
+                  inquiriesLoading={inquiriesLoading}
+                  inquiriesFailed={inquiriesFailed}
+                  hasMoreInquiries={hasMoreInquiries}
                   onDelete={() => onDelete(entry)}
                   onEdit={() => onEdit(entry)}
                   onMakeEntry={() => onMakeEntry(entry)}
@@ -380,6 +474,11 @@ export function FunnelBoard({
                 <SortableStatusColumn
                   busy={busy}
                   canEdit={canEdit}
+                  inquiries={columnInquiries(status.id)}
+                  inquiryCount={columnCount(status.id)}
+                  inquiriesLoading={inquiriesLoading}
+                  inquiriesFailed={inquiriesFailed}
+                  hasMoreInquiries={hasMoreInquiries}
                   index={index}
                   key={status.id}
                   onDelete={() => onDelete(status)}
@@ -392,6 +491,18 @@ export function FunnelBoard({
             </div>
           </div>
         </DragDropProvider>
+        {hasMoreInquiries && (
+          <div className="shrink-0 border-t border-line px-4 py-3 text-center sm:px-6 lg:px-8">
+            <Button
+              disabled={loadingMoreInquiries}
+              onClick={onLoadMoreInquiries}
+              size="sm"
+              variant="outline"
+            >
+              {loadingMoreInquiries ? t("loadingInquiries") : t("loadMore")}
+            </Button>
+          </div>
+        )}
         {canScrollLeft && (
           <button
             aria-controls={scrollId}
