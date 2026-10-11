@@ -5,12 +5,17 @@ import { fieldErrors, loginSchema, type AuthFieldErrors } from "./auth-forms";
 import { useAuth } from "./auth-context";
 
 export function useSignIn() {
-  const { login } = useAuth();
+  const { login, completeTwoFactorLogin } = useAuth();
   const [errors, setErrors] = useState<AuthFieldErrors>({});
   const [submitError, setSubmitError] = useState<ReturnType<
     typeof authErrorKey
   > | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationError, setVerificationError] = useState<
+    "required" | "invalid" | "requestFailed" | "tryLater" | null
+  >(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,12 +42,49 @@ export function useSignIn() {
     setErrors({});
     setSubmitting(true);
     try {
-      await login(result.data);
+      const response = await login(result.data);
+      if (response.twoFactorRequired) {
+        setChallengeToken(response.challengeToken);
+      }
     } catch (error) {
       setSubmitError(authErrorKey(error, "login"));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting || !challengeToken) return;
+    const code = verificationCode.trim();
+    if (!code) {
+      setVerificationError("required");
+      return;
+    }
+
+    setSubmitting(true);
+    setVerificationError(null);
+    try {
+      await completeTwoFactorLogin({ challenge_token: challengeToken, code });
+    } catch (error) {
+      const key = authErrorKey(error, "login");
+      setVerificationError(
+        key === "common.tryLater"
+          ? "tryLater"
+          : key === "login.invalidCredentials"
+            ? "invalid"
+            : "requestFailed",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function resetChallenge() {
+    setChallengeToken(null);
+    setVerificationCode("");
+    setVerificationError(null);
+    setSubmitError(null);
   }
 
   function clearFieldError(event: FormEvent<HTMLFormElement>) {
@@ -54,9 +96,16 @@ export function useSignIn() {
 
   return {
     clearFieldError,
+    challengeToken,
     errors,
     handleSubmit,
+    resetChallenge,
     submitError,
     submitting,
+    verificationCode,
+    verificationError,
+    setVerificationCode,
+    setVerificationError,
+    verifyCode,
   };
 }

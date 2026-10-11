@@ -21,6 +21,7 @@ import {
   fetchCurrentUser,
   signIn,
   signUp,
+  verifyTwoFactorLogin,
   type SessionUser,
 } from "../api/auth-api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
@@ -217,7 +218,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         workspaces,
         workspaceId,
-        login: (input) => authenticate(() => signIn(input)),
+        login: async (input) => {
+          const result = await signIn(input);
+          if (result.twoFactorRequired) return result;
+          await authenticate(() => Promise.resolve(result.accessToken));
+          return { twoFactorRequired: false };
+        },
+        completeTwoFactorLogin: (input) =>
+          authenticate(() => verifyTwoFactorLogin(input)),
         register: (input) => authenticate(() => signUp(input)),
         logout,
         selectWorkspace,

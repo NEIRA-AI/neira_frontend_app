@@ -12,7 +12,16 @@ export type AuthContextValue = {
   user: SessionUser | null;
   workspaces: WorkspaceMembership[];
   workspaceId: string | null;
-  login: (input: LoginInput) => Promise<void>;
+  login: (
+    input: LoginInput,
+  ) => Promise<
+    | { twoFactorRequired: false }
+    | { twoFactorRequired: true; challengeToken: string }
+  >;
+  completeTwoFactorLogin: (input: {
+    challenge_token: string;
+    code: string;
+  }) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   selectWorkspace: (id: string) => void;

@@ -20,8 +20,83 @@ export function SignInForm({ logoutFailed }: { logoutFailed: boolean }) {
   const { t } = useTranslation("auth");
   const location = useLocation();
   const invitation = invitationAuthDetails(location.state);
-  const { clearFieldError, errors, handleSubmit, submitError, submitting } =
-    useSignIn();
+  const {
+    challengeToken,
+    clearFieldError,
+    errors,
+    handleSubmit,
+    resetChallenge,
+    setVerificationCode,
+    setVerificationError,
+    submitError,
+    submitting,
+    verificationCode,
+    verificationError,
+    verifyCode,
+  } = useSignIn();
+
+  if (challengeToken) {
+    return (
+      <div className="w-full max-w-md space-y-6">
+        <AuthPageHeading
+          description={t("twoFactor.description")}
+          title={t("twoFactor.title")}
+        />
+        {invitation && <AuthInvitationContext invitation={invitation} />}
+        <form className="space-y-5" noValidate onSubmit={verifyCode}>
+          <AuthField
+            error={
+              verificationError
+                ? t(`twoFactor.${verificationError}`)
+                : undefined
+            }
+            id="two-factor-code"
+            label={t("twoFactor.codeLabel")}
+          >
+            <Input
+              aria-describedby={
+                verificationError ? "two-factor-code-error" : undefined
+              }
+              aria-invalid={Boolean(verificationError)}
+              autoCapitalize="off"
+              autoComplete="one-time-code"
+              autoCorrect="off"
+              autoFocus
+              id="two-factor-code"
+              inputMode="text"
+              maxLength={64}
+              onChange={(event) => {
+                setVerificationCode(event.target.value);
+                setVerificationError(null);
+              }}
+              placeholder={t("twoFactor.codePlaceholder")}
+              required
+              value={verificationCode}
+            />
+          </AuthField>
+          <p className="text-sm leading-5 text-muted">
+            {t("twoFactor.backupHint")}
+          </p>
+          <Button
+            className="w-full"
+            disabled={submitting}
+            size="lg"
+            type="submit"
+          >
+            {submitting ? t("common.submitting") : t("twoFactor.submit")}
+          </Button>
+          <button
+            className="w-full text-sm font-medium text-muted hover:text-brand focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-brand"
+            disabled={submitting}
+            onClick={resetChallenge}
+            type="button"
+          >
+            {t("twoFactor.startAgain")}
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md space-y-6">

@@ -8,6 +8,12 @@ const tokenSchema = z.object({
   token_type: z.literal("bearer"),
 }) satisfies z.ZodType<components["schemas"]["TokenResponse"]>;
 
+const twoFactorChallengeSchema = z.object({
+  two_factor_required: z.literal(true),
+  challenge_token: z.string().min(1),
+  expires_in: z.number().positive(),
+}) satisfies z.ZodType<components["schemas"]["TwoFactorChallengeResponse"]>;
+
 const workspaceSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -36,8 +42,29 @@ export async function fetchCurrentUser(): Promise<SessionUser> {
   return userSchema.parse(data);
 }
 
-export async function signIn(input: LoginInput): Promise<string> {
+export type SignInResult =
+  | { twoFactorRequired: false; accessToken: string }
+  | { twoFactorRequired: true; challengeToken: string };
+
+export async function signIn(input: LoginInput): Promise<SignInResult> {
   const { data } = await publicApi.post<unknown>("/auth/login", input);
+  const challenge = twoFactorChallengeSchema.safeParse(data);
+  if (challenge.success) {
+    return {
+      twoFactorRequired: true,
+      challengeToken: challenge.data.challenge_token,
+    };
+  }
+  return {
+    twoFactorRequired: false,
+    accessToken: tokenSchema.parse(data).access_token,
+  };
+}
+
+export async function verifyTwoFactorLogin(
+  input: components["schemas"]["LoginTwoFactorRequest"],
+): Promise<string> {
+  const { data } = await publicApi.post<unknown>("/auth/login/2fa", input);
   return tokenSchema.parse(data).access_token;
 }
 

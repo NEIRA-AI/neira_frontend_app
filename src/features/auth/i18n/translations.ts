@@ -27,6 +27,21 @@ const ru = {
     signUp: "Зарегистрироваться",
     invalidCredentials: "Неверная почта или пароль.",
   },
+  twoFactor: {
+    title: "Подтвердите вход",
+    description: "Введите код из приложения-аутентификатора.",
+    codeLabel: "Код подтверждения",
+    codePlaceholder: "Код из приложения или резервный код",
+    backupHint:
+      "Нет доступа к приложению? Введите один из сохранённых резервных кодов.",
+    required: "Введите код подтверждения.",
+    invalid:
+      "Неверный или просроченный код. Проверьте его или начните вход заново.",
+    requestFailed: "Не удалось проверить код. Попробуйте ещё раз.",
+    tryLater: "Слишком много попыток. Попробуйте позже.",
+    submit: "Подтвердить вход",
+    startAgain: "Вернуться к вводу пароля",
+  },
   register: {
     title: "Создать аккаунт",
     description: "Начните работу с ИИ",
@@ -123,6 +138,19 @@ const en = {
     noAccount: "No account?",
     signUp: "Sign up",
     invalidCredentials: "Incorrect email or password.",
+  },
+  twoFactor: {
+    title: "Confirm sign-in",
+    description: "Enter the code from your authenticator app.",
+    codeLabel: "Verification code",
+    codePlaceholder: "Authenticator or backup code",
+    backupHint: "Lost access to the app? Enter one of your saved backup codes.",
+    required: "Enter a verification code.",
+    invalid: "Invalid or expired code. Check it or start signing in again.",
+    requestFailed: "Could not verify the code. Please try again.",
+    tryLater: "Too many attempts. Try again later.",
+    submit: "Confirm sign-in",
+    startAgain: "Back to password",
   },
   register: {
     title: "Create an account",

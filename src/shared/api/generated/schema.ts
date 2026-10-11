@@ -68,6 +68,108 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/login/2fa": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Finish Two Factor Login */
+    post: operations["finish_two_factor_login_api_v1_auth_login_2fa_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/2fa": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Two Factor Status */
+    get: operations["two_factor_status_api_v1_auth_2fa_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/2fa/setup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start Two Factor Setup */
+    post: operations["start_two_factor_setup_api_v1_auth_2fa_setup_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/2fa/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Confirm Two Factor Setup */
+    post: operations["confirm_two_factor_setup_api_v1_auth_2fa_confirm_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/2fa/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Disable Two Factor */
+    post: operations["disable_two_factor_api_v1_auth_2fa_disable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/2fa/backup-codes/regenerate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Regenerate Backup Codes */
+    post: operations["regenerate_backup_codes_api_v1_auth_2fa_backup_codes_regenerate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/refresh": {
     parameters: {
       query?: never;
@@ -959,6 +1061,11 @@ export interface components {
       /** Avatar Url */
       avatar_url: string;
     };
+    /** BackupCodesResponse */
+    BackupCodesResponse: {
+      /** Backup Codes */
+      backup_codes: string[];
+    };
     /** Body_upload_avatar_api_v1_auth_me_avatar_post */
     Body_upload_avatar_api_v1_auth_me_avatar_post: {
       /** File */
@@ -1516,6 +1623,13 @@ export interface components {
       /** Password */
       password: string;
     };
+    /** LoginTwoFactorRequest */
+    LoginTwoFactorRequest: {
+      /** Challenge Token */
+      challenge_token: string;
+      /** Code */
+      code: string;
+    };
     /** MeResponse */
     MeResponse: {
       /**
@@ -1762,6 +1876,53 @@ export interface components {
        */
       token_type: "bearer";
     };
+    /** TwoFactorChallengeResponse */
+    TwoFactorChallengeResponse: {
+      /**
+       * Two Factor Required
+       * @default true
+       * @constant
+       */
+      two_factor_required: true;
+      /** Challenge Token */
+      challenge_token: string;
+      /**
+       * Expires In
+       * @default 300
+       */
+      expires_in: number;
+    };
+    /** TwoFactorConfirmRequest */
+    TwoFactorConfirmRequest: {
+      /** Code */
+      code: string;
+    };
+    /** TwoFactorProtectedRequest */
+    TwoFactorProtectedRequest: {
+      /** Code */
+      code: string;
+      /** Current Password */
+      current_password: string;
+    };
+    /** TwoFactorSetupRequest */
+    TwoFactorSetupRequest: {
+      /** Current Password */
+      current_password: string;
+    };
+    /** TwoFactorSetupResponse */
+    TwoFactorSetupResponse: {
+      /** Secret */
+      secret: string;
+      /** Otpauth Uri */
+      otpauth_uri: string;
+    };
+    /** TwoFactorStatusResponse */
+    TwoFactorStatusResponse: {
+      /** Enabled */
+      enabled: boolean;
+      /** Backup Codes Remaining */
+      backup_codes_remaining: number;
+    };
     /** UnreadCount */
     UnreadCount: {
       /** Count */
@@ -1907,7 +2068,192 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
+          "application/json":
+            | components["schemas"]["TokenResponse"]
+            | components["schemas"]["TwoFactorChallengeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  finish_two_factor_login_api_v1_auth_login_2fa_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LoginTwoFactorRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
           "application/json": components["schemas"]["TokenResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  two_factor_status_api_v1_auth_2fa_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TwoFactorStatusResponse"];
+        };
+      };
+    };
+  };
+  start_two_factor_setup_api_v1_auth_2fa_setup_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TwoFactorSetupRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TwoFactorSetupResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  confirm_two_factor_setup_api_v1_auth_2fa_confirm_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TwoFactorConfirmRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BackupCodesResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  disable_two_factor_api_v1_auth_2fa_disable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TwoFactorProtectedRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  regenerate_backup_codes_api_v1_auth_2fa_backup_codes_regenerate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TwoFactorProtectedRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BackupCodesResponse"];
         };
       };
       /** @description Validation Error */
