@@ -87,7 +87,7 @@ function ChatsPage() {
   }, [fetchNextMessagesPage, hasNextMessagesPage, isFetchingNextMessagesPage]);
 
   return (
-    <div className="h-[calc(100dvh-4rem)] min-h-[calc(100dvh-4rem)] min-w-0 bg-page text-ink lg:h-dvh lg:min-h-dvh">
+    <div className="h-[calc(100dvh-4rem-var(--impersonation-banner-height,0px))] min-h-[calc(100dvh-4rem-var(--impersonation-banner-height,0px))] min-w-0 bg-page text-ink lg:h-[calc(100dvh-var(--impersonation-banner-height,0px))] lg:min-h-[calc(100dvh-var(--impersonation-banner-height,0px))]">
       <div className="grid h-full min-h-0 min-w-0 md:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
         <div className={`min-h-0 ${selectedId ? "hidden md:block" : ""}`}>
           <ConversationList

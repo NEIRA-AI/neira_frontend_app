@@ -136,7 +136,7 @@ function NotificationsUserPage({
   }
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] bg-page lg:min-h-dvh">
+    <div className="min-h-[calc(100dvh-4rem-var(--impersonation-banner-height,0px))] bg-page lg:min-h-[calc(100dvh-var(--impersonation-banner-height,0px))]">
       <header className="sticky top-16 z-20 border-b border-line bg-page lg:top-0">
         <div className="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
           <div className="min-w-0">

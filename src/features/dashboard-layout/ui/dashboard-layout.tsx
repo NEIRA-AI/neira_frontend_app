@@ -33,9 +33,9 @@ export function DashboardLayout() {
 
   return (
     <div
-      className={`min-h-svh bg-page text-ink lg:grid lg:transition-[grid-template-columns] lg:duration-260 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${sidebarCollapsed ? "lg:grid-cols-[80px_minmax(0,1fr)]" : "lg:grid-cols-[220px_minmax(0,1fr)]"}`}
+      className={`min-h-[calc(100svh-var(--impersonation-banner-height,0px))] bg-page text-ink lg:grid lg:transition-[grid-template-columns] lg:duration-260 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${sidebarCollapsed ? "lg:grid-cols-[80px_minmax(0,1fr)]" : "lg:grid-cols-[220px_minmax(0,1fr)]"}`}
     >
-      <aside className="group/sidebar sticky top-0 z-30 hidden h-dvh min-h-0 overflow-visible border-r border-line lg:block">
+      <aside className="group/sidebar sticky top-0 z-30 hidden h-[calc(100dvh-var(--impersonation-banner-height,0px))] min-h-0 overflow-visible border-r border-line lg:block">
         <div className="relative h-full overflow-hidden">
           <div
             aria-hidden={sidebarCollapsed}

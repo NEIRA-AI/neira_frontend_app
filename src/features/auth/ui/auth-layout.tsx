@@ -16,8 +16,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   const { t } = useTranslation("auth");
 
   return (
-    <div className="min-h-screen min-h-dvh bg-page text-ink lg:grid lg:grid-cols-2">
-      <aside className="relative hidden h-screen h-dvh flex-col justify-between overflow-hidden bg-auth-artwork bg-cover bg-center p-8 text-on-dark lg:sticky lg:top-0 lg:flex lg:bg-[url('/images/auth-background.png')]">
+    <div className="min-h-[calc(100dvh-var(--impersonation-banner-height,0px))] bg-page text-ink lg:grid lg:grid-cols-2">
+      <aside className="relative hidden h-[calc(100dvh-var(--impersonation-banner-height,0px))] flex-col justify-between overflow-hidden bg-auth-artwork bg-cover bg-center p-8 text-on-dark lg:sticky lg:top-0 lg:flex lg:bg-[url('/images/auth-background.png')]">
         <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-auth-overlay/25 via-transparent to-auth-overlay" />
         <Link
           className="relative z-10 inline-flex w-24"
@@ -39,7 +39,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         </footer>
       </aside>
 
-      <div className="flex min-h-screen min-h-dvh min-w-0 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-8 lg:px-10">
+      <div className="flex min-h-[calc(100dvh-var(--impersonation-banner-height,0px))] min-w-0 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-8 lg:px-10">
         <header className="flex min-h-10 items-center justify-between gap-4 lg:justify-end">
           <Link
             className="inline-flex w-24 lg:hidden"

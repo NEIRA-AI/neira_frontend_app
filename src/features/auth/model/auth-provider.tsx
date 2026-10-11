@@ -9,26 +9,40 @@ import {
 } from "react";
 
 import {
+  beginIdentitySwitch,
+  endIdentitySwitch,
   hasAccessToken,
   onAccessTokenLost,
+  onSessionIdentityChanged,
+  replaceSessionAccessToken,
   refreshAccessToken,
   setAccessToken,
   setWorkspaceHeader,
+  withAuthCookieLock,
 } from "@/shared/api/auth-interceptors";
+import { ROUTES } from "@/shared/config/routes";
 
 import {
   endCurrentSession,
   fetchCurrentUser,
   signIn,
   signUp,
+  startImpersonationSession,
+  stopImpersonationSession,
   verifyTwoFactorLogin,
   type SessionUser,
 } from "../api/auth-api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
+import {
+  clearSessionRecoveryRequired,
+  markSessionRecoveryRequired,
+} from "./session-recovery";
 
 const WORKSPACE_STORAGE_KEY = "neira.workspaceId";
 const AUTH_ME_QUERY_KEY = ["auth", "me"] as const;
 const PRIVATE_QUERY_KEY = ["private"] as const;
+const SESSION_CHANGE_STORAGE_KEY = "neira.authSessionChanged";
+const SESSION_CHANGE_CHANNEL = "neira.authSession";
 type WorkspaceSelection =
   | { type: "current" }
   | { type: "after-delete"; deletedWorkspaceId: string }
@@ -54,6 +68,14 @@ function storeWorkspace(id: string | null) {
   }
 }
 
+function readSessionChange(): string | null {
+  try {
+    return localStorage.getItem(SESSION_CHANGE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function resolveWorkspace(user: SessionUser, preferredId: string | null) {
   const previous = user.workspaces.find(
     (workspace) => workspace.id === preferredId,
@@ -66,8 +88,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [selectedWorkspaceId, setSelectedWorkspaceId] =
     useState(readStoredWorkspace);
+  const [switchingIdentity, setSwitchingIdentity] = useState(false);
   const selectedWorkspaceIdRef = useRef(selectedWorkspaceId);
   const userRevisionRef = useRef(0);
+  const sessionChangeRef = useRef(readSessionChange());
+  const externalSessionChangeRef = useRef(false);
+  const sessionChannelRef = useRef<BroadcastChannel | null>(null);
+
+  const invalidateExternalSession = useCallback(() => {
+    if (externalSessionChangeRef.current) return;
+    externalSessionChangeRef.current = true;
+    markSessionRecoveryRequired();
+    setSwitchingIdentity(true);
+    userRevisionRef.current += 1;
+    setAccessToken(null);
+    setWorkspaceHeader(null);
+    storeWorkspace(null);
+    queryClient.clear();
+    // The refresh cookie changed in another tab. Reload to restore /auth/me,
+    // workspaces and all non-query state under that new identity.
+    window.location.reload();
+  }, [queryClient]);
+
+  const handleExternalSessionChange = useCallback(
+    (marker: string | null) => {
+      if (!marker || marker === sessionChangeRef.current) return;
+      sessionChangeRef.current = marker;
+      invalidateExternalSession();
+    },
+    [invalidateExternalSession],
+  );
+
+  function announceSessionChange() {
+    const marker =
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
+    sessionChangeRef.current = marker;
+    try {
+      localStorage.setItem(SESSION_CHANGE_STORAGE_KEY, marker);
+    } catch {
+      // BroadcastChannel still informs other live tabs without local storage.
+    }
+    try {
+      sessionChannelRef.current?.postMessage(marker);
+    } catch {
+      // Storage events and the refresh token guard still protect other tabs.
+    }
+  }
+
+  useEffect(() => {
+    const channel =
+      typeof BroadcastChannel === "undefined"
+        ? null
+        : new BroadcastChannel(SESSION_CHANGE_CHANNEL);
+    sessionChannelRef.current = channel;
+    if (channel) {
+      channel.onmessage = (event: MessageEvent<unknown>) => {
+        if (typeof event.data === "string") {
+          handleExternalSessionChange(event.data);
+        }
+      };
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === SESSION_CHANGE_STORAGE_KEY) {
+        handleExternalSessionChange(event.newValue);
+      }
+    };
+    const checkSessionChange = () => {
+      handleExternalSessionChange(readSessionChange());
+    };
+    const onVisibilityChange = () => {
+      if (!document.hidden) checkSessionChange();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", checkSessionChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    checkSessionChange();
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", checkSessionChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (sessionChannelRef.current === channel)
+        sessionChannelRef.current = null;
+      channel?.close();
+    };
+  }, [handleExternalSessionChange]);
+
+  useEffect(
+    () => onSessionIdentityChanged(invalidateExternalSession),
+    [invalidateExternalSession],
+  );
 
   const updateWorkspace = useCallback(
     (id: string | null) => {
@@ -104,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshAccessToken();
       }
       const user = await fetchCurrentUser();
+      clearSessionRecoveryRequired();
       updateWorkspace(resolveWorkspace(user, readStoredWorkspace()));
       return user;
     },
@@ -119,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function authenticate(requestToken: () => Promise<string>) {
     userRevisionRef.current += 1;
     setAccessToken(await requestToken());
+    announceSessionChange();
     updateWorkspace(null);
     queryClient.removeQueries({ queryKey: PRIVATE_QUERY_KEY });
     // A successful login or registration is durable. If /auth/me is temporarily
@@ -127,6 +238,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryKey: AUTH_ME_QUERY_KEY,
       exact: true,
     });
+  }
+
+  async function changeIdentity(
+    requestToken: () => Promise<string>,
+  ): Promise<void> {
+    beginIdentitySwitch();
+    let switchedOnServer = false;
+    let reloading = false;
+    try {
+      const token = await withAuthCookieLock(async () => {
+        const nextToken = await requestToken();
+        announceSessionChange();
+        return nextToken;
+      });
+      switchedOnServer = true;
+      setSwitchingIdentity(true);
+      userRevisionRef.current += 1;
+      await queryClient.cancelQueries();
+      replaceSessionAccessToken(token);
+      endIdentitySwitch();
+      updateWorkspace(null);
+      queryClient.clear();
+      // A new refresh cookie is already active. Restore the complete app from
+      // that session; /auth/me failures then show the session error screen.
+      reloading = true;
+      window.location.replace(ROUTES.SELECT_WORKSPACE);
+    } catch (error) {
+      if (switchedOnServer || !axios.isAxiosError(error) || !error.response) {
+        // A response could be lost after the server set its cookie. Never
+        // continue showing the previous account under an uncertain session.
+        setSwitchingIdentity(true);
+        if (!switchedOnServer) announceSessionChange();
+        queryClient.clear();
+        reloading = true;
+        window.location.replace(ROUTES.SELECT_WORKSPACE);
+        return;
+      }
+      throw error;
+    } finally {
+      endIdentitySwitch();
+      if (!reloading) setSwitchingIdentity(false);
+    }
   }
 
   async function logout() {
@@ -140,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setAccessToken(null);
+    announceSessionChange();
     updateWorkspace(null);
     queryClient.removeQueries({ queryKey: PRIVATE_QUERY_KEY });
     queryClient.setQueryData(AUTH_ME_QUERY_KEY, null);
@@ -195,7 +349,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   let status: AuthContextValue["status"] = "unauthenticated";
-  if (meQuery.isPending || (meQuery.isFetching && !user)) {
+  if (switchingIdentity || meQuery.isPending || (meQuery.isFetching && !user)) {
     status = "loading";
   } else if (meQuery.isError) {
     status =
@@ -228,6 +382,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authenticate(() => verifyTwoFactorLogin(input)),
         register: (input) => authenticate(() => signUp(input)),
         logout,
+        startImpersonation: (targetUserId) =>
+          changeIdentity(() => startImpersonationSession(targetUserId)),
+        stopImpersonation: () => changeIdentity(stopImpersonationSession),
         selectWorkspace,
         updateCurrentUser,
         refreshCurrentUser,

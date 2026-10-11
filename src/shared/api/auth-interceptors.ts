@@ -5,6 +5,8 @@ import { api } from "./client";
 declare module "axios" {
   interface AxiosRequestConfig {
     workspace?: boolean;
+    skipAuthRefresh?: boolean;
+    identitySwitchRequest?: boolean;
   }
 }
 
@@ -21,7 +23,38 @@ let tokenVersion = 0;
 let refreshPromise: Promise<string> | null = null;
 let refreshRequest: (() => Promise<string>) | null = null;
 let interceptorsInstalled = false;
+let identitySwitchPending = false;
 const accessTokenLostListeners = new Set<() => void>();
+const sessionIdentityChangedListeners = new Set<() => void>();
+
+function tokenSession(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const claims: unknown = JSON.parse(
+      atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")),
+    );
+    if (!claims || typeof claims !== "object") return null;
+    const { sub, sid } = claims as Record<string, unknown>;
+    return typeof sub === "string" && typeof sid === "string"
+      ? `${sub}:${sid}`
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The refresh cookie is shared by all tabs. Serialize cookie-changing
+ * requests so a late refresh cannot overwrite a successful identity switch. */
+export async function withAuthCookieLock<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return await navigator.locks.request("neira.auth-cookie", operation);
+  }
+  return await operation();
+}
 
 export function setAccessToken(token: string | null): void {
   const lostAccessToken = accessToken !== null && token === null;
@@ -31,6 +64,29 @@ export function setAccessToken(token: string | null): void {
   if (lostAccessToken) {
     accessTokenLostListeners.forEach((listener) => listener());
   }
+}
+
+/** Replace an authenticated identity without letting requests from the old
+ * session refresh or retry under the new one. */
+export function replaceSessionAccessToken(token: string): void {
+  sessionEpoch += 1;
+  accessToken = token;
+  tokenVersion += 1;
+  refreshPromise = null;
+}
+
+/** Invalidate pending refreshes before a cookie-changing start/stop request. */
+export function beginIdentitySwitch(): void {
+  if (identitySwitchPending)
+    throw new Error("Identity switch already in progress");
+  identitySwitchPending = true;
+  sessionEpoch += 1;
+  tokenVersion += 1;
+  refreshPromise = null;
+}
+
+export function endIdentitySwitch(): void {
+  identitySwitchPending = false;
 }
 
 export function hasAccessToken(): boolean {
@@ -49,22 +105,51 @@ export function onAccessTokenLost(listener: () => void): () => void {
   };
 }
 
+export function onSessionIdentityChanged(listener: () => void): () => void {
+  sessionIdentityChangedListeners.add(listener);
+  return () => {
+    sessionIdentityChangedListeners.delete(listener);
+  };
+}
+
 export function setWorkspaceHeader(id: string | null): void {
   workspaceId = id;
 }
 
 export function refreshAccessToken(): Promise<string> {
+  if (identitySwitchPending) {
+    return Promise.reject(new Error("Identity switch in progress"));
+  }
   const refresh = refreshRequest;
   if (!refresh) throw new Error("Auth transport is not configured");
 
   if (!refreshPromise) {
     const epoch = sessionEpoch;
     const version = tokenVersion;
-    refreshPromise = (async () => {
+    const pending = (async () => {
       try {
-        const token = await refresh();
+        const token = await withAuthCookieLock(async () => {
+          if (
+            identitySwitchPending ||
+            epoch !== sessionEpoch ||
+            version !== tokenVersion
+          ) {
+            throw new Error("Session changed before refreshing");
+          }
+          return refresh();
+        });
         if (epoch !== sessionEpoch || version !== tokenVersion) {
           throw new Error("Session changed while refreshing");
+        }
+        if (accessToken !== null) {
+          const currentSession = tokenSession(accessToken);
+          if (!currentSession || currentSession !== tokenSession(token)) {
+            // A second tab changed the shared refresh cookie. Never replay the
+            // original request with that tab's identity and workspace.
+            setAccessToken(null);
+            sessionIdentityChangedListeners.forEach((listener) => listener());
+            throw new Error("Session identity changed while refreshing");
+          }
         }
         setAccessToken(token);
         return token;
@@ -79,9 +164,11 @@ export function refreshAccessToken(): Promise<string> {
         }
         throw error;
       }
-    })().finally(() => {
-      refreshPromise = null;
+    })();
+    const tracked = pending.finally(() => {
+      if (refreshPromise === tracked) refreshPromise = null;
     });
+    refreshPromise = tracked;
   }
   return refreshPromise;
 }
@@ -93,6 +180,9 @@ export function installAuthInterceptors(refresh: () => Promise<string>): void {
 
   api.interceptors.request.use(
     (config: AuthRequestConfig) => {
+      if (identitySwitchPending && !config.identitySwitchRequest) {
+        throw new Error("Identity switch in progress");
+      }
       config._sessionEpoch = sessionEpoch;
       config._tokenVersion = tokenVersion;
       if (accessToken) {
@@ -116,7 +206,7 @@ export function installAuthInterceptors(refresh: () => Promise<string>): void {
     }
 
     const request = error.config as AuthRequestConfig | undefined;
-    if (!request || request._retry) throw error;
+    if (!request || request._retry || request.skipAuthRefresh) throw error;
     request._retry = true;
 
     // Never replay a request under a different login session.

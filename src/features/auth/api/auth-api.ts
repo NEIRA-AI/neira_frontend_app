@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { api, publicApi } from "@/shared/api/client";
+import { withAuthCookieLock } from "@/shared/api/auth-interceptors";
 import type { components } from "@/shared/api/generated/schema";
 
 const tokenSchema = z.object({
@@ -30,6 +31,15 @@ const userSchema = z.object({
   email_verified: z.boolean(),
   workspaces: z.array(workspaceSchema),
   last_deleted_workspace_name: z.string().nullable().optional().default(null),
+  impersonation: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+    })
+    .nullable()
+    .optional()
+    .default(null),
 }) satisfies z.ZodType<components["schemas"]["MeResponse"]>;
 
 export type SessionUser = z.infer<typeof userSchema>;
@@ -47,30 +57,36 @@ export type SignInResult =
   | { twoFactorRequired: true; challengeToken: string };
 
 export async function signIn(input: LoginInput): Promise<SignInResult> {
-  const { data } = await publicApi.post<unknown>("/auth/login", input);
-  const challenge = twoFactorChallengeSchema.safeParse(data);
-  if (challenge.success) {
+  return withAuthCookieLock(async () => {
+    const { data } = await publicApi.post<unknown>("/auth/login", input);
+    const challenge = twoFactorChallengeSchema.safeParse(data);
+    if (challenge.success) {
+      return {
+        twoFactorRequired: true,
+        challengeToken: challenge.data.challenge_token,
+      };
+    }
     return {
-      twoFactorRequired: true,
-      challengeToken: challenge.data.challenge_token,
+      twoFactorRequired: false,
+      accessToken: tokenSchema.parse(data).access_token,
     };
-  }
-  return {
-    twoFactorRequired: false,
-    accessToken: tokenSchema.parse(data).access_token,
-  };
+  });
 }
 
 export async function verifyTwoFactorLogin(
   input: components["schemas"]["LoginTwoFactorRequest"],
 ): Promise<string> {
-  const { data } = await publicApi.post<unknown>("/auth/login/2fa", input);
-  return tokenSchema.parse(data).access_token;
+  return withAuthCookieLock(async () => {
+    const { data } = await publicApi.post<unknown>("/auth/login/2fa", input);
+    return tokenSchema.parse(data).access_token;
+  });
 }
 
 export async function signUp(input: RegisterInput): Promise<string> {
-  const { data } = await publicApi.post<unknown>("/auth/register", input);
-  return tokenSchema.parse(data).access_token;
+  return withAuthCookieLock(async () => {
+    const { data } = await publicApi.post<unknown>("/auth/register", input);
+    return tokenSchema.parse(data).access_token;
+  });
 }
 
 export async function refreshSession(): Promise<string> {
@@ -79,5 +95,28 @@ export async function refreshSession(): Promise<string> {
 }
 
 export async function endCurrentSession(): Promise<void> {
-  await api.post("/auth/logout");
+  await withAuthCookieLock(() =>
+    api.post("/auth/logout", null, { skipAuthRefresh: true }),
+  );
+}
+
+export async function startImpersonationSession(
+  targetUserId: string,
+): Promise<string> {
+  const input: components["schemas"]["ImpersonationStartRequest"] = {
+    target_user_id: targetUserId,
+  };
+  const { data } = await api.post<unknown>("/auth/impersonation/start", input, {
+    skipAuthRefresh: true,
+    identitySwitchRequest: true,
+  });
+  return tokenSchema.parse(data).access_token;
+}
+
+export async function stopImpersonationSession(): Promise<string> {
+  const { data } = await api.post<unknown>("/auth/impersonation/stop", null, {
+    skipAuthRefresh: true,
+    identitySwitchRequest: true,
+  });
+  return tokenSchema.parse(data).access_token;
 }

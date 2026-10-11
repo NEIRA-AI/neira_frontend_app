@@ -21,6 +21,8 @@ const ru = {
   login: {
     title: "Добро пожаловать",
     description: "Войдите в свой аккаунт",
+    sessionChanged:
+      "Сеанс изменился в другой вкладке. Войдите снова, чтобы продолжить работу.",
     forgotPassword: "Забыли пароль?",
     submit: "Войти",
     noAccount: "Нет аккаунта?",
@@ -133,6 +135,8 @@ const en = {
   login: {
     title: "Welcome",
     description: "Sign in to your account",
+    sessionChanged:
+      "Your session changed in another tab. Sign in again to continue.",
     forgotPassword: "Forgot password?",
     submit: "Sign in",
     noAccount: "No account?",

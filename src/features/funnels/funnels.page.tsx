@@ -76,7 +76,7 @@ function FunnelsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] min-h-[calc(100dvh-4rem)] min-w-0 flex-col bg-page lg:h-dvh lg:min-h-dvh">
+    <div className="flex h-[calc(100dvh-4rem-var(--impersonation-banner-height,0px))] min-h-[calc(100dvh-4rem-var(--impersonation-banner-height,0px))] min-w-0 flex-col bg-page lg:h-[calc(100dvh-var(--impersonation-banner-height,0px))] lg:min-h-[calc(100dvh-var(--impersonation-banner-height,0px))]">
       <header className="sticky top-16 z-20 border-b border-line bg-page lg:top-0">
         <div className="flex min-h-20 flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold text-ink">{t("title")}</h1>

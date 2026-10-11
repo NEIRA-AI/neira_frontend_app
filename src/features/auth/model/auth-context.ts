@@ -24,6 +24,8 @@ export type AuthContextValue = {
   }) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  startImpersonation: (targetUserId: string) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
   selectWorkspace: (id: string) => void;
   updateCurrentUser: (
     update: (current: SessionUser) => SessionUser,

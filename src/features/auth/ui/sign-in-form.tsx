@@ -11,6 +11,7 @@ import {
   invitationSignUpState,
 } from "../model/auth-return-path";
 import { useSignIn } from "../model/use-sign-in";
+import { isSessionRecoveryRequired } from "../model/session-recovery";
 import { AuthField } from "./auth-field";
 import { AuthInvitationContext } from "./auth-invitation-context";
 import { AuthPageHeading } from "./auth-page-heading";
@@ -112,6 +113,15 @@ export function SignInForm({ logoutFailed }: { logoutFailed: boolean }) {
       />
 
       {invitation && <AuthInvitationContext invitation={invitation} />}
+
+      {isSessionRecoveryRequired() && (
+        <p
+          className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-ink"
+          role="status"
+        >
+          {t("login.sessionChanged")}
+        </p>
+      )}
 
       <form
         className="space-y-5"

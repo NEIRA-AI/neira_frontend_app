@@ -187,6 +187,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/impersonation/authorize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Authorize Impersonation */
+    post: operations["authorize_impersonation_api_v1_auth_impersonation_authorize_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/impersonation/users": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Impersonation Targets */
+    get: operations["list_impersonation_targets_api_v1_auth_impersonation_users_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/impersonation/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start Impersonation */
+    post: operations["start_impersonation_api_v1_auth_impersonation_start_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/impersonation/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Stop Impersonation */
+    post: operations["stop_impersonation_api_v1_auth_impersonation_stop_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/logout": {
     parameters: {
       query?: never;
@@ -1486,6 +1554,52 @@ export interface components {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
     };
+    /** ImpersonationActor */
+    ImpersonationActor: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Email */
+      email: string;
+    };
+    /** ImpersonationAuthorizeRequest */
+    ImpersonationAuthorizeRequest: {
+      /** Current Password */
+      current_password: string;
+    };
+    /** ImpersonationStartRequest */
+    ImpersonationStartRequest: {
+      /**
+       * Target User Id
+       * Format: uuid
+       */
+      target_user_id: string;
+    };
+    /** ImpersonationTarget */
+    ImpersonationTarget: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Email */
+      email: string;
+      /** Avatar Url */
+      avatar_url: string;
+    };
+    /** ImpersonationTargetsResponse */
+    ImpersonationTargetsResponse: {
+      /** Users */
+      users: components["schemas"]["ImpersonationTarget"][];
+      /** Total */
+      total: number;
+    };
     /** InquiryPage */
     InquiryPage: {
       /** Items */
@@ -1653,6 +1767,7 @@ export interface components {
       workspaces: components["schemas"]["WorkspaceSummary"][];
       /** Last Deleted Workspace Name */
       last_deleted_workspace_name?: string | null;
+      impersonation?: components["schemas"]["ImpersonationActor"] | null;
     };
     /** MemberRoleRequest */
     MemberRoleRequest: {
@@ -2268,6 +2383,123 @@ export interface operations {
     };
   };
   refresh_api_v1_auth_refresh_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TokenResponse"];
+        };
+      };
+    };
+  };
+  authorize_impersonation_api_v1_auth_impersonation_authorize_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImpersonationAuthorizeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_impersonation_targets_api_v1_auth_impersonation_users_get: {
+    parameters: {
+      query?: {
+        search?: string | null;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ImpersonationTargetsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_impersonation_api_v1_auth_impersonation_start_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImpersonationStartRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TokenResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  stop_impersonation_api_v1_auth_impersonation_stop_post: {
     parameters: {
       query?: never;
       header?: never;

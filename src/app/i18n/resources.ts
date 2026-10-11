@@ -13,6 +13,7 @@ import { dashboardTranslations } from "@/features/dashboard-layout";
 import { errorTranslations } from "@/features/error-boundary";
 import { funnelsTranslations } from "@/features/funnels";
 import { invitationsTranslations } from "@/features/invitations";
+import { impersonationTranslations } from "@/features/impersonation";
 import { membersTranslations } from "@/features/members";
 import { notFoundTranslations } from "@/features/not-found";
 import { notificationsTranslations } from "@/features/notifications";
@@ -36,6 +37,7 @@ const ru = {
   error: errorTranslations.ru,
   funnels: funnelsTranslations.ru,
   invitations: invitationsTranslations.ru,
+  impersonation: impersonationTranslations.ru,
   language: languageTranslations.ru,
   members: membersTranslations.ru,
   notFound: notFoundTranslations.ru,
@@ -58,6 +60,7 @@ const en = {
   error: errorTranslations.en,
   funnels: funnelsTranslations.en,
   invitations: invitationsTranslations.en,
+  impersonation: impersonationTranslations.en,
   language: languageTranslations.en,
   members: membersTranslations.en,
   notFound: notFoundTranslations.en,
