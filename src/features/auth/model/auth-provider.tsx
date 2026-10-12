@@ -380,7 +380,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         completeTwoFactorLogin: (input) =>
           authenticate(() => verifyTwoFactorLogin(input)),
-        register: (input) => authenticate(() => signUp(input)),
+        register: signUp,
         logout,
         startImpersonation: (targetUserId) =>
           changeIdentity(() => startImpersonationSession(targetUserId)),

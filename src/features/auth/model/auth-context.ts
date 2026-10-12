@@ -22,7 +22,7 @@ export type AuthContextValue = {
     challenge_token: string;
     code: string;
   }) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  register: (input: RegisterInput) => Promise<string>;
   logout: () => Promise<void>;
   startImpersonation: (targetUserId: string) => Promise<void>;
   stopImpersonation: () => Promise<void>;

@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
+
+import { ROUTES } from "@/shared/config/routes";
 
 import { authErrorKey } from "./auth-error";
+import type { InvitationAuthDetails } from "./auth-return-path";
 import {
   fieldErrors,
   registerSchema,
@@ -8,8 +12,9 @@ import {
 } from "./auth-forms";
 import { useAuth } from "./auth-context";
 
-export function useSignUp(invitationToken?: string) {
+export function useSignUp(invitation?: InvitationAuthDetails | null) {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [errors, setErrors] = useState<AuthFieldErrors>({});
   const [submitError, setSubmitError] = useState<ReturnType<
     typeof authErrorKey
@@ -49,10 +54,11 @@ export function useSignUp(invitationToken?: string) {
     setErrors({});
     setSubmitting(true);
     try {
-      await register({
+      const email = await register({
         ...result.data,
-        ...(invitationToken ? { invitation_token: invitationToken } : {}),
+        ...(invitation ? { invitation_token: invitation.token } : {}),
       });
+      void navigate(ROUTES.VERIFY, { state: { email, invitation } });
     } catch (error) {
       setSubmitError(authErrorKey(error, "register"));
     } finally {

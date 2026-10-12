@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import { ROUTES } from "@/shared/config/routes";
@@ -21,6 +22,14 @@ export function SignInForm({ logoutFailed }: { logoutFailed: boolean }) {
   const { t } = useTranslation("auth");
   const location = useLocation();
   const invitation = invitationAuthDetails(location.state);
+  const stateEmail =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "email" in location.state &&
+    typeof location.state.email === "string"
+      ? location.state.email
+      : "";
+  const [email, setEmail] = useState(invitation?.email ?? stateEmail);
   const {
     challengeToken,
     clearFieldError,
@@ -146,13 +155,14 @@ export function SignInForm({ logoutFailed }: { logoutFailed: boolean }) {
             aria-describedby={errors.email ? "email-error" : undefined}
             aria-invalid={Boolean(errors.email)}
             autoComplete="email"
-            defaultValue={invitation?.email}
             id="email"
             name="email"
+            onChange={(event) => setEmail(event.target.value)}
             placeholder={t("common.emailPlaceholder")}
             readOnly={Boolean(invitation)}
             required
             type="email"
+            value={email}
           />
         </AuthField>
 
@@ -165,19 +175,34 @@ export function SignInForm({ logoutFailed }: { logoutFailed: boolean }) {
               errors.password ? t(validationKey(errors.password)) : undefined
             }
           />
-          <p className="text-right text-sm text-muted">
-            {t("login.forgotPassword")}
+          <p className="text-right text-sm">
+            <Link
+              className="text-muted hover:text-brand hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-brand"
+              state={{ email }}
+              to={ROUTES.FORGOT_PASSWORD}
+            >
+              {t("login.forgotPassword")}
+            </Link>
           </p>
         </div>
 
         <div className="space-y-4 pt-1">
           {submitError && (
-            <p
+            <div
               className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger"
               role="alert"
             >
-              {t(submitError)}
-            </p>
+              <p>{t(submitError)}</p>
+              {submitError === "login.emailUnverified" && (
+                <Link
+                  className="mt-2 inline-block font-medium underline underline-offset-2 hover:text-ink"
+                  state={{ email, invitation }}
+                  to={ROUTES.VERIFY}
+                >
+                  {t("login.verifyEmail")}
+                </Link>
+              )}
+            </div>
           )}
           <Button
             className="w-full"

@@ -10,6 +10,10 @@ const email = z
 
 const password = z.string().min(8, "passwordLength").max(128, "passwordLength");
 
+export const emailSchema = email;
+export const newPasswordSchema = password;
+export const emailCodeSchema = z.string().regex(/^\d{6}$/, "codeLength");
+
 export const loginSchema = z.object({
   email,
   password: z.string().min(1, "passwordRequired"),

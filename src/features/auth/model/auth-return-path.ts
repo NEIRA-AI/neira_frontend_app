@@ -68,6 +68,6 @@ export function invitationSignInState(invitation: InvitationAuthDetails) {
 }
 
 export function invitationSignUpState(invitation: InvitationAuthDetails) {
-  // Registration accepts the invitation atomically, so the next stop is the app.
+  // Email confirmation completes registration before the user can sign in.
   return { from: ROUTES.SETTINGS, invitation };
 }

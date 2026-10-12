@@ -7,6 +7,13 @@ export function authErrorKey(error: unknown, action: "login" | "register") {
   if (action === "login" && status === 401) {
     return "login.invalidCredentials" as const;
   }
+  if (
+    action === "login" &&
+    status === 403 &&
+    error.response?.data?.detail === "EMAIL_VERIFICATION_REQUIRED"
+  ) {
+    return "login.emailUnverified" as const;
+  }
   if (action === "register") {
     const detail = error.response?.data?.detail;
     if (status === 404 && detail === "Invitation not found") {

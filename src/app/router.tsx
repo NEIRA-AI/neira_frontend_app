@@ -39,11 +39,23 @@ export const router = createBrowserRouter([
             path: ROUTES.SIGN_UP,
             lazy: () => import("@/features/auth/sign-up.page"),
           },
+          {
+            path: ROUTES.FORGOT_PASSWORD,
+            lazy: () => import("@/features/auth/forgot-password.page"),
+          },
+          {
+            path: ROUTES.RESET_PASSWORD,
+            lazy: () => import("@/features/auth/reset-password.page"),
+          },
+          {
+            path: ROUTES.RESET_PASSWORD_LEGACY_LINK,
+            lazy: () => import("@/features/auth/reset-password.page"),
+          },
+          {
+            path: ROUTES.VERIFY,
+            lazy: () => import("@/features/auth/verify.page"),
+          },
         ],
-      },
-      {
-        path: ROUTES.VERIFY,
-        lazy: () => import("@/features/auth/verify.page"),
       },
       {
         path: ROUTES.INVITATION,

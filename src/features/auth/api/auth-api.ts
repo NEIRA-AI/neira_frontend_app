@@ -15,6 +15,20 @@ const twoFactorChallengeSchema = z.object({
   expires_in: z.number().positive(),
 }) satisfies z.ZodType<components["schemas"]["TwoFactorChallengeResponse"]>;
 
+const registrationPendingSchema = z.object({
+  email: z.email(),
+  verification_required: z.literal(true),
+}) satisfies z.ZodType<components["schemas"]["RegistrationPendingResponse"]>;
+
+const emailVerificationSchema = z.object({
+  verified: z.literal(true),
+  invitation_status: z
+    .enum(["accepted", "unavailable"])
+    .nullable()
+    .optional()
+    .default(null),
+}) satisfies z.ZodType<components["schemas"]["EmailVerificationResponse"]>;
+
 const workspaceSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -83,10 +97,31 @@ export async function verifyTwoFactorLogin(
 }
 
 export async function signUp(input: RegisterInput): Promise<string> {
-  return withAuthCookieLock(async () => {
-    const { data } = await publicApi.post<unknown>("/auth/register", input);
-    return tokenSchema.parse(data).access_token;
-  });
+  const { data } = await publicApi.post<unknown>("/auth/register", input);
+  return registrationPendingSchema.parse(data).email;
+}
+
+export async function verifyEmail(
+  input: components["schemas"]["EmailCodeRequest"],
+) {
+  const { data } = await publicApi.post<unknown>("/auth/verify-email", input);
+  return emailVerificationSchema.parse(data);
+}
+
+export async function resendEmailVerification(email: string): Promise<void> {
+  const input: components["schemas"]["EmailRequest"] = { email };
+  await publicApi.post("/auth/verify-email/resend", input);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const input: components["schemas"]["EmailRequest"] = { email };
+  await publicApi.post("/auth/password-reset/request", input);
+}
+
+export async function confirmPasswordReset(
+  input: components["schemas"]["PasswordResetConfirmRequest"],
+): Promise<void> {
+  await publicApi.post("/auth/password-reset/confirm", input);
 }
 
 export async function refreshSession(): Promise<string> {

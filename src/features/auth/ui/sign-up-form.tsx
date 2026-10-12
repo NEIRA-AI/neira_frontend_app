@@ -29,7 +29,7 @@ export function SignUpForm() {
   const location = useLocation();
   const invitation = invitationAuthDetails(location.state);
   const { clearFieldError, errors, handleSubmit, submitError, submitting } =
-    useSignUp(invitation?.token);
+    useSignUp(invitation);
 
   return (
     <div className="w-full max-w-md space-y-6">
