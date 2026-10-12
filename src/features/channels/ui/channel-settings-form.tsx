@@ -2,7 +2,6 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 
@@ -38,70 +37,67 @@ export function ChannelSettingsForm({
   }
 
   return (
-    <Card className="border-0 p-4 sm:p-6">
-      <h2 className="text-base font-semibold">{t("configuration")}</h2>
-      <form className="mt-5 space-y-5" onSubmit={submit}>
-        <div>
-          <label
-            className="mb-2 block text-sm font-medium"
-            htmlFor="channel-settings-name"
-          >
-            {t("channelName")}
-          </label>
-          <Input
-            aria-invalid={submitted && !name.trim()}
-            className="border-transparent bg-subtle"
-            disabled={!canManage || busy}
-            id="channel-settings-name"
-            maxLength={120}
-            onChange={(event) => setName(event.target.value)}
-            value={name}
-          />
-          {submitted && !name.trim() && (
-            <p className="mt-1.5 text-sm text-danger" role="alert">
-              {t("requiredName")}
-            </p>
-          )}
-        </div>
-        <div>
-          <label
-            className="mb-2 block text-sm font-medium"
-            htmlFor="channel-settings-funnel"
-          >
-            {t("funnelLabel")}
-          </label>
-          <Select
-            ariaLabel={t("funnelLabel")}
-            className="w-full border-transparent bg-subtle"
-            disabled={!canManage || busy}
-            id="channel-settings-funnel"
-            onValueChange={(value) =>
-              setFunnelId(value === "none" ? null : value)
-            }
-            options={[
-              { value: "none", label: t("noFunnel") },
-              ...(unavailableFunnel
-                ? [{ value: funnelId, label: t("unavailable"), disabled: true }]
-                : []),
-              ...funnels.map((funnel) => ({
-                value: funnel.id,
-                label: funnel.name,
-              })),
-            ]}
-            value={funnelId ?? "none"}
-          />
-          <p className="mt-2 text-xs leading-5 text-muted">
-            {t("funnelOptional")}
+    <form className="space-y-5" onSubmit={submit}>
+      <div>
+        <label
+          className="mb-2 block text-sm font-medium"
+          htmlFor="channel-settings-name"
+        >
+          {t("channelName")}
+        </label>
+        <Input
+          aria-invalid={submitted && !name.trim()}
+          className="border-transparent bg-subtle"
+          disabled={!canManage || busy}
+          id="channel-settings-name"
+          maxLength={120}
+          onChange={(event) => setName(event.target.value)}
+          value={name}
+        />
+        {submitted && !name.trim() && (
+          <p className="mt-1.5 text-sm text-danger" role="alert">
+            {t("requiredName")}
           </p>
-        </div>
-        {canManage && (
-          <div className="flex justify-end border-t border-line pt-5">
-            <Button disabled={busy || !changed || !name.trim()} type="submit">
-              {t(busy ? "saving" : "save")}
-            </Button>
-          </div>
         )}
-      </form>
-    </Card>
+      </div>
+      <div>
+        <label
+          className="mb-2 block text-sm font-medium"
+          htmlFor="channel-settings-funnel"
+        >
+          {t("funnelLabel")}
+        </label>
+        <Select
+          ariaLabel={t("funnelLabel")}
+          className="w-full border-transparent bg-subtle"
+          disabled={!canManage || busy}
+          id="channel-settings-funnel"
+          onValueChange={(value) =>
+            setFunnelId(value === "none" ? null : value)
+          }
+          options={[
+            { value: "none", label: t("noFunnel") },
+            ...(unavailableFunnel
+              ? [{ value: funnelId, label: t("unavailable"), disabled: true }]
+              : []),
+            ...funnels.map((funnel) => ({
+              value: funnel.id,
+              label: funnel.name,
+            })),
+          ]}
+          value={funnelId ?? "none"}
+        />
+        <p className="mt-2 text-xs leading-5 text-muted">
+          {t("funnelOptional")}
+        </p>
+      </div>
+      {canManage && (
+        <div className="flex justify-end border-t border-line pt-5">
+          <Button disabled={busy || !changed || !name.trim()} type="submit">
+            {t(busy ? "saving" : "save")}
+          </Button>
+        </div>
+      )}
+    </form>
   );
 }

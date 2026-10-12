@@ -637,6 +637,40 @@ export interface paths {
     patch: operations["update_channel_api_v1_channels__channel_id__patch"];
     trace?: never;
   };
+  "/api/v1/channels/{channel_id}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Channel Events */
+    get: operations["list_channel_events_api_v1_channels__channel_id__events_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/channels/{channel_id}/events/{event_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Channel Event */
+    get: operations["get_channel_event_api_v1_channels__channel_id__events__event_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/channels/{channel_id}/check": {
     parameters: {
       query?: never;
@@ -1178,6 +1212,87 @@ export interface components {
       name?: string | null;
       /** Funnel Id */
       funnel_id?: string | null;
+    };
+    /** ChannelEventDetailRead */
+    ChannelEventDetailRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Provider Event Id */
+      provider_event_id: string;
+      /** Event Type */
+      event_type: string;
+      /** Connection Id */
+      connection_id: string | null;
+      /** Funnel Id At Receipt */
+      funnel_id_at_receipt: string | null;
+      /**
+       * Received At
+       * Format: date-time
+       */
+      received_at: string;
+      /**
+       * Processing Status
+       * @enum {string}
+       */
+      processing_status:
+        "pending" | "processed" | "unsupported" | "failed" | "legacy";
+      /** Attempt Count */
+      attempt_count: number;
+      /** Next Attempt At */
+      next_attempt_at: string | null;
+      /** Processed At */
+      processed_at: string | null;
+      /** Last Error Code */
+      last_error_code: string | null;
+      /** Payload */
+      payload: {
+        [key: string]: unknown;
+      };
+    };
+    /** ChannelEventPageRead */
+    ChannelEventPageRead: {
+      /** Items */
+      items: components["schemas"]["ChannelEventRead"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ChannelEventRead */
+    ChannelEventRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Provider Event Id */
+      provider_event_id: string;
+      /** Event Type */
+      event_type: string;
+      /** Connection Id */
+      connection_id: string | null;
+      /** Funnel Id At Receipt */
+      funnel_id_at_receipt: string | null;
+      /**
+       * Received At
+       * Format: date-time
+       */
+      received_at: string;
+      /**
+       * Processing Status
+       * @enum {string}
+       */
+      processing_status:
+        "pending" | "processed" | "unsupported" | "failed" | "legacy";
+      /** Attempt Count */
+      attempt_count: number;
+      /** Next Attempt At */
+      next_attempt_at: string | null;
+      /** Processed At */
+      processed_at: string | null;
+      /** Last Error Code */
+      last_error_code: string | null;
     };
     /** ChannelRead */
     ChannelRead: {
@@ -3484,6 +3599,76 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ChannelRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_channel_events_api_v1_channels__channel_id__events_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelEventPageRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_channel_event_api_v1_channels__channel_id__events__event_id__get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        channel_id: string;
+        event_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChannelEventDetailRead"];
         };
       };
       /** @description Validation Error */
