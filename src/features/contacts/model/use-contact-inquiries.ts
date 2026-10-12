@@ -5,10 +5,15 @@ import {
   listContactInquiries,
 } from "../api/contacts-api";
 
-export function useContactInquiries(workspaceId: string, contactId: string) {
+export function useContactInquiries(
+  workspaceId: string,
+  contactId: string,
+  limit = 50,
+) {
   return useInfiniteQuery({
-    queryKey: contactInquiriesQueryKey(workspaceId, contactId),
-    queryFn: ({ pageParam }) => listContactInquiries(contactId, pageParam),
+    queryKey: contactInquiriesQueryKey(workspaceId, contactId, limit),
+    queryFn: ({ pageParam }) =>
+      listContactInquiries(contactId, pageParam, limit),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: Boolean(workspaceId && contactId),

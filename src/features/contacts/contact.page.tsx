@@ -6,9 +6,9 @@ import {
   RotateCcw,
   UserRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 
 import { useAuth } from "@/features/auth";
 import { channelProviders } from "@/features/channels";
@@ -187,6 +187,8 @@ function IdentityCard({
 function ContactPage() {
   const { t, i18n } = useTranslation("contacts");
   const { contactId } = useParams<"contactId">();
+  const location = useLocation();
+  const scrolledToInquiryRef = useRef<string | null>(null);
   const { workspaceId } = useAuth();
   const workspace = workspaceId ?? "";
   const contactQuery = useContact(workspace, contactId ?? "");
@@ -205,6 +207,40 @@ function ContactPage() {
     !contactId ||
     (axios.isAxiosError(contactQuery.error) &&
       [404, 422].includes(contactQuery.error.response?.status ?? 0));
+
+  const targetedInquiryId = /^#inquiry-([0-9a-f-]{36})$/i.exec(
+    location.hash,
+  )?.[1];
+  const targetedInquiryLoaded = inquiries.some(
+    (inquiry) => inquiry.id === targetedInquiryId,
+  );
+  useEffect(() => {
+    if (targetedInquiryId && !targetedInquiryLoaded && inquiriesQuery.isPending)
+      return;
+    const anchorId =
+      targetedInquiryId && targetedInquiryLoaded
+        ? `inquiry-${targetedInquiryId}`
+        : targetedInquiryId || location.hash === "#contact-inquiries-title"
+          ? "contact-inquiries-title"
+          : null;
+    if (!anchorId || !contact) return;
+    const scrollKey = `${workspace}:${contactId}:${location.key}:${anchorId}`;
+    if (scrolledToInquiryRef.current === scrollKey) return;
+    const target = document.getElementById(anchorId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.focus({ preventScroll: true });
+    scrolledToInquiryRef.current = scrollKey;
+  }, [
+    contact,
+    contactId,
+    inquiriesQuery.isPending,
+    location.hash,
+    location.key,
+    targetedInquiryId,
+    targetedInquiryLoaded,
+    workspace,
+  ]);
 
   if (isMissing) {
     return (
@@ -322,9 +358,19 @@ function ContactPage() {
           <h2
             className="mb-4 text-lg font-semibold"
             id="contact-inquiries-title"
+            tabIndex={-1}
           >
             {t("inquiries")}
           </h2>
+          {targetedInquiryId &&
+            inquiriesQuery.data &&
+            !targetedInquiryLoaded && (
+              <p className="mb-4 text-sm text-muted" role="status">
+                {inquiriesQuery.hasNextPage
+                  ? t("inquiryNotLoaded")
+                  : t("inquiryNotFound")}
+              </p>
+            )}
           {inquiriesQuery.isPending ? (
             <p
               className="rounded-2xl border border-line bg-surface px-5 py-8 text-sm text-muted"
@@ -359,8 +405,10 @@ function ContactPage() {
               <ul className="grid gap-3">
                 {inquiries.map((inquiry) => (
                   <li
-                    className="rounded-2xl border border-line bg-surface p-5"
+                    className={`scroll-mt-24 rounded-2xl border bg-surface p-5 ${inquiry.id === targetedInquiryId ? "border-brand ring-2 ring-brand/30" : "border-line"}`}
+                    id={`inquiry-${inquiry.id}`}
                     key={inquiry.id}
+                    tabIndex={-1}
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <MessageSquareText

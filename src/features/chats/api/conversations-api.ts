@@ -2,6 +2,7 @@ import { api } from "@/shared/api/client";
 import type { components } from "@/shared/api/generated/schema";
 
 export type ChatMessage = components["schemas"]["ConversationMessage"];
+export type MessageAuthor = components["schemas"]["ConversationMessageAuthor"];
 export type Conversation = components["schemas"]["ConversationSummary"];
 export type ConversationPage = components["schemas"]["ConversationPage"];
 export type MessagePage = components["schemas"]["ConversationMessagePage"];
@@ -22,6 +23,16 @@ export const conversationQueryKey = (workspaceId: string, id: string) =>
 
 export const messagesQueryKey = (workspaceId: string, id: string) =>
   [...conversationsQueryKey(workspaceId), "messages", id] as const;
+
+export const messageAuthorsQueryKey = (workspaceId: string, id: string) =>
+  [...conversationsQueryKey(workspaceId), "message-authors", id] as const;
+
+export const messageAuthorQueryKey = (
+  workspaceId: string,
+  conversationId: string,
+  messageId: string,
+) =>
+  [...messageAuthorsQueryKey(workspaceId, conversationId), messageId] as const;
 
 export async function listConversations(
   cursor: string | null,
@@ -69,6 +80,17 @@ export async function getMessage(
 ): Promise<ChatMessage> {
   const { data } = await api.get<ChatMessage>(
     `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+    { workspace: true },
+  );
+  return data;
+}
+
+export async function getMessageAuthor(
+  conversationId: string,
+  messageId: string,
+): Promise<MessageAuthor> {
+  const { data } = await api.get<MessageAuthor>(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/author`,
     { workspace: true },
   );
   return data;

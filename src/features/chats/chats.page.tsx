@@ -10,8 +10,8 @@ import {
   useListConversations,
 } from "./model/use-list-conversations";
 import { useListMessages } from "./model/use-list-messages";
+import { ActiveConversation } from "./ui/active-conversation";
 import { ConversationList } from "./ui/conversation-list";
-import { MessageThread } from "./ui/message-thread";
 
 function uniqueConversations(pages: Conversation[][]): Conversation[] {
   const seen = new Set<string>();
@@ -102,7 +102,7 @@ function ChatsPage() {
           />
         </div>
         {selectedId ? (
-          <MessageThread
+          <ActiveConversation
             canSend={canSend}
             conversation={selectedConversation}
             conversationId={selectedId}

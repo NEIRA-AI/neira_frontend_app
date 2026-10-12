@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
-  contactInquiriesQueryKey,
+  contactInquiriesQueryPrefix,
   contactQueryKey,
   contactsQueryKey,
   deleteContact,
@@ -17,7 +17,7 @@ export function useDeleteContact(workspaceId: string) {
         queryKey: contactQueryKey(workspaceId, id),
       });
       queryClient.removeQueries({
-        queryKey: contactInquiriesQueryKey(workspaceId, id),
+        queryKey: contactInquiriesQueryPrefix(workspaceId, id),
       });
       void queryClient.invalidateQueries({
         queryKey: contactsQueryKey(workspaceId),

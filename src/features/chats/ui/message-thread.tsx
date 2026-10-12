@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowLeft,
+  ExternalLink,
   RotateCcw,
   Volume2,
   VolumeX,
@@ -25,6 +26,16 @@ import { useVisibleMessageRead } from "../model/use-visible-message-read";
 import { ChatAvatar } from "./chat-avatar";
 import { MessageComposer } from "./message-composer";
 
+function safeExternalUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function MessageRow({
   canSend,
   message,
@@ -32,9 +43,12 @@ function MessageRow({
   unsupportedMessage,
   deliveryStatusText,
   onRetryFailed,
+  onOpenContact,
+  onOpenAuthor,
   retryError,
   retryBlocked,
   retrying,
+  unknownParticipant,
 }: {
   canSend: boolean;
   message: ChatMessage;
@@ -45,10 +59,19 @@ function MessageRow({
     string
   >;
   onRetryFailed: (message: ChatMessage) => void;
+  onOpenContact: (
+    contactId: string | null,
+    identityId: string | null,
+    trigger: HTMLButtonElement,
+    fallback: { name: string; avatarUrl: string | null },
+  ) => void;
+  onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
   retryError: string | null;
   retryBlocked: boolean;
   retrying: boolean;
+  unknownParticipant: string;
 }) {
+  const { t } = useTranslation("chats");
   const text = messageText(message);
   const isSystem = message.direction === "system";
   const isOutgoing = message.direction === "outbound";
@@ -59,6 +82,23 @@ function MessageRow({
     deliveryStatus === "unknown"
       ? deliveryStatusText[deliveryStatus]
       : null;
+  const canOpenContact = !isOutgoing && Boolean(message.author_contact_id);
+
+  function openAuthor(trigger: HTMLButtonElement) {
+    if (isOutgoing) {
+      onOpenAuthor(message, trigger);
+    } else if (message.author_contact_id) {
+      onOpenContact(
+        message.author_contact_id,
+        message.author_external_identity_id,
+        trigger,
+        {
+          name: message.author_name || unknownParticipant,
+          avatarUrl: message.author_avatar_url,
+        },
+      );
+    }
+  }
 
   if (isSystem) {
     return (
@@ -72,19 +112,55 @@ function MessageRow({
 
   return (
     <li
-      className={`flex ${isOutgoing ? "justify-end" : "justify-start"}`}
+      className={`flex items-end gap-2 ${isOutgoing ? "justify-end" : "justify-start"}`}
       data-message-id={message.id}
     >
+      {!isOutgoing &&
+        (message.author_contact_id ? (
+          <button
+            aria-label={t("openContactPanel", {
+              name: message.author_name || unknownParticipant,
+            })}
+            className="shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            onClick={(event) => openAuthor(event.currentTarget)}
+            type="button"
+          >
+            <ChatAvatar
+              name={message.author_name || unknownParticipant}
+              size="sm"
+              url={message.author_avatar_url}
+            />
+          </button>
+        ) : (
+          <ChatAvatar
+            name={message.author_name || unknownParticipant}
+            size="sm"
+            url={message.author_avatar_url}
+          />
+        ))}
       <div
         className={`max-w-[min(85%,38rem)] rounded-2xl px-4 py-3 shadow-sm ${isOutgoing ? "rounded-br-md bg-brand-fill text-on-brand" : "rounded-bl-md border border-line bg-surface text-ink"}`}
       >
-        {message.author_name && (
-          <p
-            className={`mb-1 text-xs font-semibold ${isOutgoing ? "text-on-brand/80" : "text-brand"}`}
-          >
-            {message.author_name}
-          </p>
-        )}
+        {message.author_name &&
+          (isOutgoing || canOpenContact ? (
+            <button
+              aria-label={t(
+                isOutgoing ? "openAuthorPanel" : "openContactPanel",
+                {
+                  name: message.author_name,
+                },
+              )}
+              className={`mb-1 block cursor-pointer rounded text-left text-xs font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${isOutgoing ? "text-on-brand/80" : "text-brand"}`}
+              onClick={(event) => openAuthor(event.currentTarget)}
+              type="button"
+            >
+              {message.author_name}
+            </button>
+          ) : (
+            <p className="mb-1 text-xs font-semibold text-brand">
+              {message.author_name}
+            </p>
+          ))}
         <p className="whitespace-pre-wrap break-words text-sm leading-6">
           {text || unsupportedMessage}
         </p>
@@ -115,6 +191,22 @@ function MessageRow({
           </p>
         )}
       </div>
+      {isOutgoing && (
+        <button
+          aria-label={t("openAuthorPanel", {
+            name: message.author_name || unknownParticipant,
+          })}
+          className="shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          onClick={(event) => openAuthor(event.currentTarget)}
+          type="button"
+        >
+          <ChatAvatar
+            name={message.author_name || unknownParticipant}
+            size="sm"
+            url={message.author_avatar_url}
+          />
+        </button>
+      )}
     </li>
   );
 }
@@ -129,7 +221,10 @@ export function MessageThread({
   isPending,
   messages,
   onLoadMore,
+  onOpenContact,
+  onOpenAuthor,
   onRetry,
+  isContactPanelOpen,
   workspaceId,
 }: {
   canSend: boolean;
@@ -141,7 +236,15 @@ export function MessageThread({
   isPending: boolean;
   messages: ChatMessage[];
   onLoadMore: () => void;
+  onOpenContact: (
+    contactId: string | null,
+    identityId: string | null,
+    trigger: HTMLButtonElement,
+    fallback: { name: string; avatarUrl: string | null },
+  ) => void;
+  onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
   onRetry: () => void;
+  isContactPanelOpen: boolean;
   workspaceId: string;
 }) {
   const { t, i18n } = useTranslation("chats");
@@ -193,6 +296,16 @@ export function MessageThread({
     unknown: t("deliveryUnknown"),
     retry: t("retry"),
   };
+  const profileUrl =
+    conversation?.kind === "external"
+      ? safeExternalUrl(conversation.profile_url)
+      : null;
+  const providerName =
+    conversation?.channel_provider === "telegram_bot"
+      ? t("telegramProvider")
+      : conversation?.channel_provider === "vk_community"
+        ? t("vkProvider")
+        : t("channelProvider");
 
   async function retryFailed(message: ChatMessage) {
     if (
@@ -248,20 +361,93 @@ export function MessageThread({
         >
           <ArrowLeft aria-hidden="true" className="size-5" />
         </Link>
-        <ChatAvatar
-          name={conversation?.title ?? t("conversation")}
-          url={conversation?.avatar_url ?? null}
-        />
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-ink sm:text-base">
-            {conversation?.title ?? t("conversation")}
-          </h2>
-          <p className="text-xs text-muted">
-            {conversation?.kind === "external"
-              ? t("externalConversation")
-              : t("platformConversation")}
-          </p>
-        </div>
+        {conversation?.kind === "external" ? (
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              aria-controls={
+                isContactPanelOpen ? "chat-contact-panel" : undefined
+              }
+              aria-expanded={isContactPanelOpen}
+              aria-label={t("openContactPanel", { name: conversation.title })}
+              className="shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              onClick={(event) =>
+                onOpenContact(
+                  conversation.contact_id,
+                  conversation.primary_external_identity_id,
+                  event.currentTarget,
+                  {
+                    name: conversation.title,
+                    avatarUrl: conversation.avatar_url,
+                  },
+                )
+              }
+              type="button"
+            >
+              <ChatAvatar
+                name={conversation.title}
+                url={conversation.avatar_url}
+              />
+            </button>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-sm font-semibold text-ink sm:text-base">
+                <button
+                  aria-controls={
+                    isContactPanelOpen ? "chat-contact-panel" : undefined
+                  }
+                  aria-expanded={isContactPanelOpen}
+                  className="max-w-full cursor-pointer truncate rounded text-left hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  onClick={(event) =>
+                    onOpenContact(
+                      conversation.contact_id,
+                      conversation.primary_external_identity_id,
+                      event.currentTarget,
+                      {
+                        name: conversation.title,
+                        avatarUrl: conversation.avatar_url,
+                      },
+                    )
+                  }
+                  type="button"
+                >
+                  {conversation.title}
+                </button>
+              </h2>
+              {profileUrl ? (
+                <a
+                  className="inline-flex max-w-full min-w-0 items-center gap-1 rounded text-xs text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  href={profileUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <span className="truncate">
+                    {t("openProviderProfile", { provider: providerName })}
+                  </span>
+                  <ExternalLink
+                    aria-hidden="true"
+                    className="size-3 shrink-0"
+                  />
+                </a>
+              ) : (
+                <p className="text-xs text-muted">
+                  {t("externalConversation")}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <ChatAvatar
+              name={conversation?.title ?? t("conversation")}
+              url={conversation?.avatar_url ?? null}
+            />
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-sm font-semibold text-ink sm:text-base">
+                {conversation?.title ?? t("conversation")}
+              </h2>
+              <p className="text-xs text-muted">{t("platformConversation")}</p>
+            </div>
+          </div>
+        )}
         <button
           aria-label={t(soundEnabled ? "muteSound" : "enableSound")}
           aria-pressed={!soundEnabled}
@@ -358,6 +544,8 @@ export function MessageThread({
                       onRetryFailed={(failedMessage) => {
                         void retryFailed(failedMessage);
                       }}
+                      onOpenContact={onOpenContact}
+                      onOpenAuthor={onOpenAuthor}
                       retryError={
                         retryError?.messageId === message.id
                           ? retryError.text
@@ -371,6 +559,7 @@ export function MessageThread({
                       retrying={retryingId === message.id}
                       timeFormat={timeFormat}
                       unsupportedMessage={t("unsupportedMessage")}
+                      unknownParticipant={t("unknownParticipant")}
                     />
                   );
                 })}
@@ -426,9 +615,12 @@ function FragmentWithDay({
   unsupportedMessage,
   deliveryStatusText,
   onRetryFailed,
+  onOpenContact,
+  onOpenAuthor,
   retryError,
   retryBlocked,
   retrying,
+  unknownParticipant,
 }: {
   canSend: boolean;
   date: string | null;
@@ -440,9 +632,17 @@ function FragmentWithDay({
     string
   >;
   onRetryFailed: (message: ChatMessage) => void;
+  onOpenContact: (
+    contactId: string | null,
+    identityId: string | null,
+    trigger: HTMLButtonElement,
+    fallback: { name: string; avatarUrl: string | null },
+  ) => void;
+  onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
   retryError: string | null;
   retryBlocked: boolean;
   retrying: boolean;
+  unknownParticipant: string;
 }) {
   return (
     <>
@@ -458,11 +658,14 @@ function FragmentWithDay({
         message={message}
         deliveryStatusText={deliveryStatusText}
         onRetryFailed={onRetryFailed}
+        onOpenContact={onOpenContact}
+        onOpenAuthor={onOpenAuthor}
         retryError={retryError}
         retryBlocked={retryBlocked}
         retrying={retrying}
         timeFormat={timeFormat}
         unsupportedMessage={unsupportedMessage}
+        unknownParticipant={unknownParticipant}
       />
     </>
   );

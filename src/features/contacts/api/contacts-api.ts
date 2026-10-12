@@ -16,10 +16,16 @@ export const contactListQueryKey = (workspaceId: string, search: string) =>
 export const contactQueryKey = (workspaceId: string, contactId: string) =>
   [...contactsQueryKey(workspaceId), "detail", contactId] as const;
 
-export const contactInquiriesQueryKey = (
+export const contactInquiriesQueryPrefix = (
   workspaceId: string,
   contactId: string,
 ) => ["private", "inquiries", workspaceId, "contact", contactId] as const;
+
+export const contactInquiriesQueryKey = (
+  workspaceId: string,
+  contactId: string,
+  limit: number,
+) => [...contactInquiriesQueryPrefix(workspaceId, contactId), limit] as const;
 
 export async function listContacts(
   cursor: string | null,
@@ -65,9 +71,10 @@ export async function deleteContact(id: string): Promise<void> {
 export async function listContactInquiries(
   contactId: string,
   cursor: string | null,
+  limit: number,
 ): Promise<InquiryPage> {
   const { data } = await api.get<InquiryPage>("/inquiries", {
-    params: { contact_id: contactId, limit: 50, cursor: cursor ?? undefined },
+    params: { contact_id: contactId, limit, cursor: cursor ?? undefined },
     workspace: true,
   });
   return data;

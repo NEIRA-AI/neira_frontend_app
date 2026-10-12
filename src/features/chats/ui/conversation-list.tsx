@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 
+import { channelProviders } from "@/features/channels";
 import { messageConversationPath } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
@@ -109,56 +110,81 @@ export function ConversationList({
         ) : (
           <>
             <ul>
-              {conversations.map((conversation) => (
-                <li key={conversation.id}>
-                  <NavLink
-                    aria-current={
-                      selectedId === conversation.id ? "page" : undefined
-                    }
-                    className={`flex min-w-0 gap-3 border-b border-line px-4 py-4 transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:px-5 ${selectedId === conversation.id ? "bg-brand-soft" : ""}`}
-                    to={messageConversationPath(conversation.id)}
-                  >
-                    <ChatAvatar
-                      name={conversation.title}
-                      url={conversation.avatar_url}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-                          {conversation.title}
-                        </span>
-                        {conversation.last_message && (
-                          <time
-                            className="shrink-0 text-[11px] text-muted"
-                            dateTime={conversation.last_message.occurred_at}
-                          >
-                            {timeFormat.format(
-                              new Date(conversation.last_message.occurred_at),
-                            )}
-                          </time>
-                        )}
-                      </span>
-                      <span className="mt-1 flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-xs text-muted">
-                          {previewText(conversation, t("unsupportedMessage"))}
-                        </span>
-                        {conversation.unread_count > 0 && (
-                          <span
-                            aria-label={t("unreadCount", {
-                              count: conversation.unread_count,
-                            })}
-                            className="grid min-w-5 shrink-0 place-items-center rounded-full bg-brand-fill px-1.5 py-0.5 text-[11px] font-semibold text-on-brand"
-                          >
-                            {conversation.unread_count > 99
-                              ? "99+"
-                              : conversation.unread_count}
+              {conversations.map((conversation) => {
+                const provider = channelProviders.find(
+                  (item) => item.id === conversation.channel_provider,
+                );
+                const providerName = provider
+                  ? t(
+                      provider.id === "telegram_bot"
+                        ? "telegramProvider"
+                        : "vkProvider",
+                    )
+                  : null;
+
+                return (
+                  <li key={conversation.id}>
+                    <NavLink
+                      aria-current={
+                        selectedId === conversation.id ? "page" : undefined
+                      }
+                      className={`flex min-w-0 gap-3 border-b border-line px-4 py-4 transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:px-5 ${selectedId === conversation.id ? "bg-brand-soft" : ""}`}
+                      to={messageConversationPath(conversation.id)}
+                    >
+                      <span className="relative size-10 shrink-0">
+                        <ChatAvatar
+                          name={conversation.title}
+                          url={conversation.avatar_url}
+                        />
+                        {provider && (
+                          <span className="absolute -bottom-0.5 -right-0.5 grid size-4.5 place-items-center rounded-full bg-surface ring-2 ring-surface">
+                            <img
+                              alt=""
+                              className="size-4 object-contain"
+                              src={provider.icon}
+                            />
+                            <span className="sr-only">{providerName}</span>
                           </span>
                         )}
                       </span>
-                    </span>
-                  </NavLink>
-                </li>
-              ))}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+                            {conversation.title}
+                          </span>
+                          {conversation.last_message && (
+                            <time
+                              className="shrink-0 text-[11px] text-muted"
+                              dateTime={conversation.last_message.occurred_at}
+                            >
+                              {timeFormat.format(
+                                new Date(conversation.last_message.occurred_at),
+                              )}
+                            </time>
+                          )}
+                        </span>
+                        <span className="mt-1 flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-xs text-muted">
+                            {previewText(conversation, t("unsupportedMessage"))}
+                          </span>
+                          {conversation.unread_count > 0 && (
+                            <span
+                              aria-label={t("unreadCount", {
+                                count: conversation.unread_count,
+                              })}
+                              className="grid min-w-5 shrink-0 place-items-center rounded-full bg-brand-fill px-1.5 py-0.5 text-[11px] font-semibold text-on-brand"
+                            >
+                              {conversation.unread_count > 99
+                                ? "99+"
+                                : conversation.unread_count}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </NavLink>
+                  </li>
+                );
+              })}
             </ul>
             {isError && (
               <div className="px-5 py-3 text-sm text-danger" role="alert">

@@ -6,15 +6,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 
 import { useAuth } from "@/features/auth";
+import {
+  contactInquiriesQueryPrefix,
+  contactQueryKey,
+} from "@/features/contacts";
 
 import {
   conversationQueryKey,
   conversationsQueryKey,
   getConversation,
   getMessage,
+  messageAuthorsQueryKey,
   messagesQueryKey,
   messageText,
   unreadChatCountQueryKey,
+  type Conversation,
 } from "../api/conversations-api";
 import {
   conversationStreamUrl,
@@ -182,6 +188,45 @@ export function ChatNotifications({ children }: PropsWithChildren) {
       }
     }
 
+    function invalidateProfile(conversationId: string) {
+      const detailKey = conversationQueryKey(
+        activeWorkspaceId!,
+        conversationId,
+      );
+      const conversation = queryClient.getQueryData<Conversation>(detailKey);
+      void queryClient.invalidateQueries({
+        queryKey: conversationsQueryKey(activeWorkspaceId!),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({ queryKey: detailKey, exact: true });
+      void queryClient.invalidateQueries({
+        queryKey: messagesQueryKey(activeWorkspaceId!, conversationId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: messageAuthorsQueryKey(activeWorkspaceId!, conversationId),
+      });
+      if (conversation?.contact_id) {
+        void queryClient.invalidateQueries({
+          queryKey: contactQueryKey(
+            activeWorkspaceId!,
+            conversation.contact_id,
+          ),
+          exact: true,
+        });
+      }
+    }
+
+    function invalidateContactInquiries(conversation: Conversation) {
+      if (!conversation.contact_id) return;
+      void queryClient.invalidateQueries({
+        queryKey: contactInquiriesQueryPrefix(
+          activeWorkspaceId!,
+          conversation.contact_id,
+        ),
+      });
+    }
+
     async function showIncomingToast(
       conversationId: string,
       messageId: string,
@@ -198,11 +243,13 @@ export function ChatNotifications({ children }: PropsWithChildren) {
             getMessage(conversationId, messageId),
             getConversation(conversationId),
           ]);
-          if (!active || message.direction !== "inbound") return;
+          if (!active) return;
+          invalidateContactInquiries(conversation);
+          if (message.direction !== "inbound") return;
           const toast: ChatToast = {
             id: message.id,
             conversationId,
-            avatarUrl: conversation.avatar_url,
+            avatarUrl: message.author_avatar_url,
             name: message.author_name || conversation.title,
             preview: messageText(message),
           };
@@ -263,12 +310,24 @@ export function ChatNotifications({ children }: PropsWithChildren) {
           invalidateConversation();
           return;
         }
+        if (event.event === "profile") {
+          const payload = parseEvent(event.data);
+          if (payload) invalidateProfile(payload.conversation_id);
+          return;
+        }
         if (event.event !== "message" && event.event !== "read") return;
         const payload = parseEvent(event.data);
         if (!payload) return;
         invalidateConversation(payload.conversation_id);
-        if (event.event === "message" && payload.message_id) {
-          void showIncomingToast(payload.conversation_id, payload.message_id);
+        if (event.event === "message") {
+          if (payload.message_id) {
+            void showIncomingToast(payload.conversation_id, payload.message_id);
+          } else {
+            const conversation = queryClient.getQueryData<Conversation>(
+              conversationQueryKey(activeWorkspaceId!, payload.conversation_id),
+            );
+            if (conversation) invalidateContactInquiries(conversation);
+          }
         }
       },
       onclose() {

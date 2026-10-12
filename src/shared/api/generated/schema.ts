@@ -984,6 +984,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conversations/{conversation_id}/messages/{message_id}/author": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Message Author */
+    get: operations["get_message_author_api_v1_conversations__conversation_id__messages__message_id__author_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/conversations/{conversation_id}/read": {
     parameters: {
       query?: never;
@@ -1343,6 +1360,34 @@ export interface components {
       /** Phone */
       phone?: string | null;
     };
+    /** ConversationChannelAuthor */
+    ConversationChannelAuthor: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "channel";
+      /** Id */
+      id: string | null;
+      /** Display Name */
+      display_name: string;
+      /** Avatar Url */
+      avatar_url: string | null;
+      /** Channel Name */
+      channel_name: string | null;
+      /** Provider */
+      provider: string | null;
+      /** External Id */
+      external_id: string | null;
+      /** Status */
+      status: string | null;
+      /** Username */
+      username: string | null;
+      /** Profile Url */
+      profile_url: string | null;
+      /** Archived */
+      archived: boolean;
+    };
     /** ConversationMessage */
     ConversationMessage: {
       /**
@@ -1363,6 +1408,12 @@ export interface components {
       author_name: string | null;
       /** Author User Id */
       author_user_id: string | null;
+      /** Author Contact Id */
+      author_contact_id: string | null;
+      /** Author External Identity Id */
+      author_external_identity_id: string | null;
+      /** Author Avatar Url */
+      author_avatar_url: string | null;
       /** Delivery Status */
       delivery_status: string | null;
       /** Delivery Error Code */
@@ -1375,6 +1426,13 @@ export interface components {
       /** Parts */
       parts: components["schemas"]["ConversationMessagePart"][];
     };
+    /**
+     * ConversationMessageAuthor
+     * @description The persisted outgoing author's details, scoped by its message.
+     */
+    ConversationMessageAuthor:
+      | components["schemas"]["ConversationChannelAuthor"]
+      | components["schemas"]["ConversationUserAuthor"];
     /** ConversationMessagePage */
     ConversationMessagePage: {
       /** Items */
@@ -1429,8 +1487,16 @@ export interface components {
       title: string;
       /** Avatar Url */
       avatar_url: string | null;
+      /** Contact Id */
+      contact_id: string | null;
+      /** Primary External Identity Id */
+      primary_external_identity_id: string | null;
+      /** Profile Url */
+      profile_url: string | null;
       /** Channel Id */
       channel_id: string | null;
+      /** Channel Provider */
+      channel_provider: string | null;
       /**
        * Updated At
        * Format: date-time
@@ -1444,6 +1510,29 @@ export interface components {
     ConversationUnreadCount: {
       /** Unread Count */
       unread_count: number;
+    };
+    /** ConversationUserAuthor */
+    ConversationUserAuthor: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "user";
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Display Name */
+      display_name: string;
+      /** Avatar Url */
+      avatar_url: string | null;
+      /** Email */
+      email: string | null;
+      /** Telegram */
+      telegram: string | null;
+      /** Workspace Role */
+      workspace_role: string | null;
     };
     /** CurrentWorkspaceResponse */
     CurrentWorkspaceResponse: {
@@ -4318,6 +4407,40 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ConversationMessage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_message_author_api_v1_conversations__conversation_id__messages__message_id__author_get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+        message_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationMessageAuthor"];
         };
       };
       /** @description Validation Error */

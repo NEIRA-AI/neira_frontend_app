@@ -63,6 +63,9 @@ const ru = {
   inquiries: "Обращения",
   inquiriesLoadError: "Не удалось загрузить обращения.",
   noInquiries: "Обращений пока нет.",
+  inquiryNotLoaded:
+    "Это обращение ещё не загружено. Нажмите «Показать ещё», чтобы найти его в истории.",
+  inquiryNotFound: "Это обращение не найдено среди обращений контакта.",
   open: "Открыто",
   closed: "Закрыто",
   openedAt: "Создано {{date}}",
@@ -137,6 +140,9 @@ const en = {
   inquiries: "Inquiries",
   inquiriesLoadError: "Could not load inquiries.",
   noInquiries: "No inquiries yet.",
+  inquiryNotLoaded:
+    "This inquiry has not loaded yet. Select “Show more” to find it in the history.",
+  inquiryNotFound: "This inquiry was not found among the contact's inquiries.",
   open: "Open",
   closed: "Closed",
   openedAt: "Opened {{date}}",
