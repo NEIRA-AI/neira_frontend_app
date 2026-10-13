@@ -253,7 +253,10 @@ export function ChatNotifications({ children }: PropsWithChildren) {
             conversationId,
             avatarUrl: message.author_avatar_url,
             name: message.author_name || conversation.title,
-            preview: messagePreview(message, t("photo")),
+            preview: messagePreview(message, {
+              photo: t("photo"),
+              file: t("file"),
+            }),
           };
           setToasts((current) =>
             [...current.filter((item) => item.id !== toast.id), toast].slice(

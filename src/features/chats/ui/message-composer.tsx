@@ -1,5 +1,12 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Paperclip, SendHorizontal, Smile, X } from "lucide-react";
+import {
+  FileText,
+  Image,
+  Paperclip,
+  SendHorizontal,
+  Smile,
+  X,
+} from "lucide-react";
 import {
   useEffect,
   useLayoutEffect,
@@ -19,8 +26,9 @@ import {
 } from "../model/use-send-message";
 
 const maxMessageLength = 4096;
-const maxPhotoCaptionLength = 1024;
+const maxAttachmentCaptionLength = 1024;
 const maxPhotoSize = 10 * 1024 * 1024;
+const maxFileSize = 20 * 1024 * 1024;
 const allowedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const emojiChoices = [
@@ -70,7 +78,8 @@ const emojiChoices = [
 
 type SendAttempt =
   | { kind: "text"; text: string; id: string }
-  | { kind: "photo"; photo: File; caption: string; id: string };
+  | { kind: "photo"; photo: File; caption: string; id: string }
+  | { kind: "file"; file: File; caption: string; id: string };
 
 export function MessageComposer({
   conversationId,
@@ -82,27 +91,38 @@ export function MessageComposer({
   const { t, i18n } = useTranslation("chats");
   const [draft, setDraft] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [attachmentOpen, setAttachmentOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [deliveryUncertain, setDeliveryUncertain] = useState(false);
   const pendingAttempt = useRef<SendAttempt | null>(null);
   const submitting = useRef(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
   const pendingCaretRef = useRef<number | null>(null);
   const focusAfterEmojiRef = useRef(false);
   const emojiCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attachmentCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const emojiOpenModeRef = useRef<"hover" | "manual">("manual");
+  const attachmentOpenModeRef = useRef<"hover" | "manual">("manual");
   const restoreTextareaAfterHoverRef = useRef(false);
   const { photo, previewUrl, setPhoto } = usePhotoPreview();
   const send = useSendMessage(workspaceId, conversationId);
   const busy = send.isPending;
+  const attachment = photo ?? selectedFile;
 
   useEffect(
     () => () => {
       if (emojiCloseTimerRef.current !== null) {
         clearTimeout(emojiCloseTimerRef.current);
+      }
+      if (attachmentCloseTimerRef.current !== null) {
+        clearTimeout(attachmentCloseTimerRef.current);
       }
     },
     [],
@@ -112,6 +132,29 @@ export function MessageComposer({
     if (emojiCloseTimerRef.current === null) return;
     clearTimeout(emojiCloseTimerRef.current);
     emojiCloseTimerRef.current = null;
+  }
+
+  function clearAttachmentCloseTimer() {
+    if (attachmentCloseTimerRef.current === null) return;
+    clearTimeout(attachmentCloseTimerRef.current);
+    attachmentCloseTimerRef.current = null;
+  }
+
+  function closeAttachmentAfterPointerLeaves() {
+    clearAttachmentCloseTimer();
+    attachmentCloseTimerRef.current = setTimeout(() => {
+      attachmentCloseTimerRef.current = null;
+      setAttachmentOpen(false);
+    }, 160);
+  }
+
+  function handleAttachmentOpenChange(open: boolean) {
+    clearAttachmentCloseTimer();
+    if (open) {
+      attachmentOpenModeRef.current = "manual";
+      setEmojiOpen(false);
+    }
+    setAttachmentOpen(open);
   }
 
   function closeEmojiAfterPointerLeaves() {
@@ -127,6 +170,7 @@ export function MessageComposer({
     if (open) {
       emojiOpenModeRef.current = "manual";
       restoreTextareaAfterHoverRef.current = false;
+      setAttachmentOpen(false);
     }
     setEmojiOpen(open);
   }
@@ -144,7 +188,7 @@ export function MessageComposer({
       );
       pendingCaretRef.current = null;
     }
-  }, [draft, photo]);
+  }, [draft, photo, selectedFile]);
 
   function rememberSelection() {
     const textarea = textareaRef.current;
@@ -162,8 +206,12 @@ export function MessageComposer({
     if (
       (previous?.kind === "photo" &&
         (previous.photo !== photo || previous.caption !== next.trim())) ||
+      (previous?.kind === "file" &&
+        (previous.file !== selectedFile || previous.caption !== next.trim())) ||
       (previous?.kind === "text" &&
-        (photo !== null || previous.text !== next.trim()))
+        (photo !== null ||
+          selectedFile !== null ||
+          previous.text !== next.trim()))
     ) {
       clearAttempt();
     } else {
@@ -176,8 +224,15 @@ export function MessageComposer({
     const from = Math.min(start, draft.length);
     const to = Math.min(Math.max(end, from), draft.length);
     const next = `${draft.slice(0, from)}${emoji}${draft.slice(to)}`;
-    if (next.length > (photo ? maxPhotoCaptionLength : maxMessageLength)) {
-      setError(t(photo ? "photoCaptionTooLong" : "messageTooLong"));
+    if (
+      next.length >
+      (photo || selectedFile ? maxAttachmentCaptionLength : maxMessageLength)
+    ) {
+      setError(
+        t(
+          photo || selectedFile ? "attachmentCaptionTooLong" : "messageTooLong",
+        ),
+      );
       return;
     }
     const caret = from + emoji.length;
@@ -199,6 +254,7 @@ export function MessageComposer({
     setDraft("");
     selectionRef.current = { start: 0, end: 0 };
     setPhoto(null);
+    setSelectedFile(null);
     setDeliveryUncertain(false);
     setError(null);
   }
@@ -218,8 +274,9 @@ export function MessageComposer({
       return;
     }
     setPhoto(file);
+    setSelectedFile(null);
     clearAttempt();
-    if (draft.trim().length > maxPhotoCaptionLength) {
+    if (draft.trim().length > maxAttachmentCaptionLength) {
       setError(t("photoCaptionTooLong"));
     }
     textareaRef.current?.focus();
@@ -231,13 +288,45 @@ export function MessageComposer({
     choosePhoto(file);
   }
 
+  function chooseFile(file: File | undefined) {
+    if (!file || busy) return;
+    if (file.size === 0) {
+      setError(t("fileEmpty"));
+      return;
+    }
+    if (file.size > maxFileSize) {
+      setError(t("fileTooLarge"));
+      return;
+    }
+    setSelectedFile(file);
+    setPhoto(null);
+    clearAttempt();
+    if (draft.trim().length > maxAttachmentCaptionLength) {
+      setError(t("attachmentCaptionTooLong"));
+    }
+    textareaRef.current?.focus();
+  }
+
+  function handleFileInput(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    chooseFile(file);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current || busy || deliveryUncertain) return;
     const text = draft.trim();
-    if (!text && !photo) return;
-    if (text.length > (photo ? maxPhotoCaptionLength : maxMessageLength)) {
-      setError(t(photo ? "photoCaptionTooLong" : "messageTooLong"));
+    if (!text && !photo && !selectedFile) return;
+    if (
+      text.length >
+      (photo || selectedFile ? maxAttachmentCaptionLength : maxMessageLength)
+    ) {
+      setError(
+        t(
+          photo || selectedFile ? "attachmentCaptionTooLong" : "messageTooLong",
+        ),
+      );
       return;
     }
 
@@ -248,9 +337,20 @@ export function MessageComposer({
         previous.caption === text
         ? previous
         : { kind: "photo", photo, caption: text, id: crypto.randomUUID() }
-      : previous?.kind === "text" && previous.text === text
-        ? previous
-        : { kind: "text", text, id: crypto.randomUUID() };
+      : selectedFile
+        ? previous?.kind === "file" &&
+          previous.file === selectedFile &&
+          previous.caption === text
+          ? previous
+          : {
+              kind: "file",
+              file: selectedFile,
+              caption: text,
+              id: crypto.randomUUID(),
+            }
+        : previous?.kind === "text" && previous.text === text
+          ? previous
+          : { kind: "text", text, id: crypto.randomUUID() };
     pendingAttempt.current = attempt;
     submitting.current = true;
     setError(null);
@@ -264,11 +364,18 @@ export function MessageComposer({
               caption: attempt.caption,
               clientMessageId: attempt.id,
             }
-          : {
-              kind: "text",
-              text: attempt.text,
-              clientMessageId: attempt.id,
-            },
+          : attempt.kind === "file"
+            ? {
+                kind: "file",
+                file: attempt.file,
+                caption: attempt.caption,
+                clientMessageId: attempt.id,
+              }
+            : {
+                kind: "text",
+                text: attempt.text,
+                clientMessageId: attempt.id,
+              },
       );
       if (result.delivery_status === "sent") {
         clearPersistedDraft();
@@ -289,7 +396,7 @@ export function MessageComposer({
         clearPersistedDraft();
         return;
       }
-      const kind = sendFailureKind(failure);
+      const kind = sendFailureKind(failure, attempt.kind);
       if (kind === "uncertain") {
         setDeliveryUncertain(true);
         setError(t("messageSendUncertain"));
@@ -312,6 +419,14 @@ export function MessageComposer({
         setError(t("photoCaptionTooLong"));
       } else if (kind === "photo_storage_unavailable") {
         setError(t("photoStorageUnavailable"));
+      } else if (kind === "file_empty") {
+        setError(t("fileEmpty"));
+      } else if (kind === "file_too_large") {
+        setError(t("fileTooLarge"));
+      } else if (kind === "file_caption_too_long") {
+        setError(t("attachmentCaptionTooLong"));
+      } else if (kind === "file_storage_unavailable") {
+        setError(t("fileStorageUnavailable"));
       } else {
         setError(t("messageSendFailed"));
       }
@@ -338,40 +453,49 @@ export function MessageComposer({
       onSubmit={(event) => void handleSubmit(event)}
     >
       <div className="mx-auto max-w-4xl overflow-hidden rounded-[1.375rem] border border-line bg-surface shadow-sm">
-        {photo && (
+        {attachment && (
           <div className="flex items-center gap-3 border-b border-line px-3 py-2.5">
-            {previewUrl ? (
+            {photo && previewUrl ? (
               <img
                 alt={t("selectedPhotoAlt")}
                 className="size-14 shrink-0 rounded-xl bg-subtle object-cover"
                 src={previewUrl}
               />
             ) : (
-              <div className="size-14 shrink-0 rounded-xl bg-subtle" />
+              <div className="grid size-14 shrink-0 place-items-center rounded-xl bg-subtle text-muted">
+                {photo ? (
+                  <Image aria-hidden="true" className="size-6" />
+                ) : (
+                  <FileText aria-hidden="true" className="size-6" />
+                )}
+              </div>
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">
-                {photo.name}
+                {attachment.name}
               </p>
               <p className="text-xs text-muted">
-                {photo.size < 1024 * 1024
-                  ? t("photoSizeKb", {
-                      size: Math.max(1, Math.round(photo.size / 1024)),
-                    })
-                  : t("photoSize", {
-                      size: (photo.size / (1024 * 1024)).toFixed(1),
-                    })}
+                {attachment.size < 1024
+                  ? t("fileSizeBytes", { size: attachment.size })
+                  : attachment.size < 1024 * 1024
+                    ? t("fileSizeKb", {
+                        size: Math.max(1, Math.round(attachment.size / 1024)),
+                      })
+                    : t("fileSizeMb", {
+                        size: (attachment.size / (1024 * 1024)).toFixed(1),
+                      })}
               </p>
             </div>
             <button
-              aria-label={t("removePhoto")}
+              aria-label={t("removeAttachment")}
               className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
               disabled={busy}
               onClick={() => {
                 setPhoto(null);
+                setSelectedFile(null);
                 clearAttempt();
               }}
-              title={t("removePhoto")}
+              title={t("removeAttachment")}
               type="button"
             >
               <X aria-hidden="true" className="size-4" />
@@ -387,16 +511,88 @@ export function MessageComposer({
             tabIndex={-1}
             type="file"
           />
-          <button
-            aria-label={t("attachPhoto")}
-            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted/70 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={busy}
-            onClick={() => photoInputRef.current?.click()}
-            title={t("attachPhoto")}
-            type="button"
+          <input
+            hidden
+            onChange={handleFileInput}
+            ref={fileInputRef}
+            tabIndex={-1}
+            type="file"
+          />
+          <DropdownMenu.Root
+            modal={false}
+            open={attachmentOpen}
+            onOpenChange={handleAttachmentOpenChange}
           >
-            <Paperclip aria-hidden="true" className="size-5" />
-          </button>
+            <DropdownMenu.Trigger asChild>
+              <button
+                aria-label={t("openAttachmentPicker")}
+                className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted/70 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy}
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "mouse" || busy) return;
+                  clearAttachmentCloseTimer();
+                  if (attachmentOpen) return;
+                  attachmentOpenModeRef.current = "hover";
+                  setEmojiOpen(false);
+                  setAttachmentOpen(true);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === "mouse")
+                    closeAttachmentAfterPointerLeaves();
+                }}
+                onPointerDown={(event) => {
+                  if (
+                    event.pointerType === "mouse" &&
+                    attachmentOpen &&
+                    attachmentOpenModeRef.current === "hover"
+                  ) {
+                    event.preventDefault();
+                    attachmentOpenModeRef.current = "manual";
+                  }
+                }}
+                type="button"
+              >
+                <Paperclip aria-hidden="true" className="size-5" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="start"
+                className="z-50 min-w-40 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-lg outline-none"
+                collisionPadding={12}
+                onCloseAutoFocus={(event) => {
+                  if (attachmentOpenModeRef.current === "hover")
+                    event.preventDefault();
+                  attachmentOpenModeRef.current = "manual";
+                }}
+                onPointerEnter={(event) => {
+                  if (event.pointerType === "mouse")
+                    clearAttachmentCloseTimer();
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === "mouse")
+                    closeAttachmentAfterPointerLeaves();
+                }}
+                side="top"
+                sideOffset={8}
+              >
+                <DropdownMenu.Item
+                  className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 outline-none data-highlighted:bg-subtle"
+                  onSelect={() => photoInputRef.current?.click()}
+                >
+                  <Image aria-hidden="true" className="size-4" />
+                  {t("attachPhoto")}
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 outline-none data-highlighted:bg-subtle"
+                  onSelect={() => fileInputRef.current?.click()}
+                >
+                  <FileText aria-hidden="true" className="size-4" />
+                  {t("attachFile")}
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
           <DropdownMenu.Root
             modal={false}
             open={emojiOpen}
@@ -414,6 +610,7 @@ export function MessageComposer({
                   emojiOpenModeRef.current = "hover";
                   restoreTextareaAfterHoverRef.current =
                     document.activeElement === textareaRef.current;
+                  setAttachmentOpen(false);
                   setEmojiOpen(true);
                 }}
                 onPointerLeave={(event) => {
@@ -501,17 +698,27 @@ export function MessageComposer({
           </DropdownMenu.Root>
           <label className="min-w-0 flex-1">
             <span className="sr-only">
-              {t(photo ? "photoCaptionInput" : "messageInput")}
+              {t(
+                photo || selectedFile
+                  ? "attachmentCaptionInput"
+                  : "messageInput",
+              )}
             </span>
             <textarea
               aria-describedby={error ? "chat-send-error" : undefined}
               aria-invalid={
                 draft.trim().length >
-                (photo ? maxPhotoCaptionLength : maxMessageLength)
+                (photo || selectedFile
+                  ? maxAttachmentCaptionLength
+                  : maxMessageLength)
               }
               className="block max-h-36 min-h-10 w-full resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-[15px] leading-5 text-ink caret-brand outline-none placeholder:text-muted/80"
               disabled={busy}
-              maxLength={photo ? maxPhotoCaptionLength : maxMessageLength}
+              maxLength={
+                photo || selectedFile
+                  ? maxAttachmentCaptionLength
+                  : maxMessageLength
+              }
               onChange={(event) => {
                 updateDraft(event.target.value);
                 rememberSelection();
@@ -527,7 +734,9 @@ export function MessageComposer({
                 choosePhoto(file);
               }}
               placeholder={t(
-                photo ? "photoCaptionPlaceholder" : "messagePlaceholder",
+                photo || selectedFile
+                  ? "attachmentCaptionPlaceholder"
+                  : "messagePlaceholder",
               )}
               ref={textareaRef}
               rows={1}
@@ -537,7 +746,11 @@ export function MessageComposer({
           <button
             aria-label={t(busy ? "sendingMessage" : "sendMessage")}
             className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full bg-brand-fill text-on-brand transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={(!draft.trim() && !photo) || busy || deliveryUncertain}
+            disabled={
+              (!draft.trim() && !photo && !selectedFile) ||
+              busy ||
+              deliveryUncertain
+            }
             title={t(busy ? "sendingMessage" : "sendMessage")}
             type="submit"
           >

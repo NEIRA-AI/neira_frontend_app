@@ -15,6 +15,13 @@ type SendPhotoRequest = {
   photo: File;
   caption: SendPhotoBody["caption"];
 };
+type SendFileBody =
+  paths["/api/v1/conversations/{conversation_id}/messages/file"]["post"]["requestBody"]["content"]["multipart/form-data"];
+type SendFileRequest = {
+  clientMessageId: SendFileBody["client_message_id"];
+  file: File;
+  caption: SendFileBody["caption"];
+};
 type UnreadChatCount = components["schemas"]["ConversationUnreadCount"];
 type ReadRequest = components["schemas"]["ConversationReadRequest"];
 type ReadResult = components["schemas"]["ConversationReadResult"];
@@ -134,6 +141,23 @@ export async function sendPhoto(
   return data;
 }
 
+export async function sendFile(
+  conversationId: string,
+  request: SendFileRequest,
+): Promise<ChatMessage> {
+  const form = new FormData();
+  form.append("client_message_id", request.clientMessageId);
+  form.append("file", request.file);
+  if (request.caption) form.append("caption", request.caption);
+
+  const { data } = await api.post<ChatMessage>(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/file`,
+    form,
+    { workspace: true, timeout: 300_000 },
+  );
+  return data;
+}
+
 export async function retryMessage(
   conversationId: string,
   messageId: string,
@@ -204,10 +228,19 @@ export function messageText(message: ChatMessage | null): string {
 
 export function messagePreview(
   message: ChatMessage | null,
-  photoLabel: string,
+  labels: { photo: string; file: string },
 ): string {
   if (!message) return "";
   const text = messageText(message);
-  if (!message.parts.some((part) => part.kind === "image")) return text;
-  return text ? `${photoLabel} · ${text}` : photoLabel;
+  const seen = new Set<string>();
+  const media = message.parts
+    .filter((part) => part.kind === "image" || part.kind === "file")
+    .sort((a, b) => a.position - b.position)
+    .flatMap((part) => {
+      if (seen.has(part.kind)) return [];
+      seen.add(part.kind);
+      return [part.kind === "image" ? labels.photo : labels.file];
+    });
+  if (text) media.push(text);
+  return media.join(" · ");
 }

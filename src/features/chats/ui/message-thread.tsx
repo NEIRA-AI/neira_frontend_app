@@ -41,6 +41,7 @@ import { useVisibleMessageRead } from "../model/use-visible-message-read";
 
 import { ChatAvatar } from "./chat-avatar";
 import { MessageComposer } from "./message-composer";
+import { MessageFile } from "./message-file";
 import { MessagePhoto } from "./message-photo";
 
 function safeExternalUrl(value: string | null) {
@@ -274,16 +275,18 @@ function MessageRow({
 }) {
   const { t } = useTranslation("chats");
   const text = messageText(message);
-  const photoParts = message.parts
-    .filter((part) => part.kind === "image")
+  const mediaParts = message.parts
+    .filter((part) => part.kind === "image" || part.kind === "file")
     .sort((a, b) => a.position - b.position);
-  const photoRefreshRef = useRef<Promise<ChatMessage> | null>(null);
-  const refreshPhotoMessage = useCallback(() => {
-    if (photoRefreshRef.current) return photoRefreshRef.current;
+  const photoGrid =
+    mediaParts.length > 1 && mediaParts.every((part) => part.kind === "image");
+  const mediaRefreshRef = useRef<Promise<ChatMessage> | null>(null);
+  const refreshMediaMessage = useCallback(() => {
+    if (mediaRefreshRef.current) return mediaRefreshRef.current;
     const request = getMessage(message.conversation_id, message.id);
-    photoRefreshRef.current = request;
+    mediaRefreshRef.current = request;
     const clear = () => {
-      if (photoRefreshRef.current === request) photoRefreshRef.current = null;
+      if (mediaRefreshRef.current === request) mediaRefreshRef.current = null;
     };
     void request.then(clear, clear);
     return request;
@@ -306,7 +309,9 @@ function MessageRow({
           ? t("messageSendConnectionUnavailable")
           : message.delivery_error_code === "photo_upload_failed"
             ? t("messagePhotoUploadFailed")
-            : null
+            : message.delivery_error_code === "file_upload_failed"
+              ? t("messageFileUploadFailed")
+              : null
       : null;
   const visibleDeliveryDetail =
     deliveryStatus === "sent"
@@ -391,27 +396,36 @@ function MessageRow({
               {message.author_name}
             </p>
           ))}
-        {photoParts.length > 0 && (
+        {mediaParts.length > 0 && (
           <div
             className={
-              photoParts.length > 1
+              photoGrid
                 ? "grid w-[min(68vw,32rem)] max-w-full grid-cols-2 gap-2"
-                : ""
+                : "space-y-2"
             }
           >
-            {photoParts.map((part) => (
-              <MessagePhoto
-                compact={photoParts.length > 1}
-                key={part.id}
-                part={part}
-                refreshMessage={refreshPhotoMessage}
-              />
-            ))}
+            {mediaParts.map((part) =>
+              part.kind === "image" ? (
+                <MessagePhoto
+                  compact={photoGrid}
+                  key={part.id}
+                  part={part}
+                  refreshMessage={refreshMediaMessage}
+                />
+              ) : (
+                <MessageFile
+                  key={part.id}
+                  outgoing={isOutgoing}
+                  part={part}
+                  refreshMessage={refreshMediaMessage}
+                />
+              ),
+            )}
           </div>
         )}
-        {(text || photoParts.length === 0) && (
+        {(text || mediaParts.length === 0) && (
           <p
-            className={`whitespace-pre-wrap break-words text-sm leading-6 ${photoParts.length > 0 ? "mt-2" : ""}`}
+            className={`whitespace-pre-wrap break-words text-sm leading-6 ${mediaParts.length > 0 ? "mt-2" : ""}`}
           >
             {text || unsupportedMessage}
           </p>
