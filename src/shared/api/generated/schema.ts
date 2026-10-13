@@ -1893,6 +1893,8 @@ export interface components {
       email: string;
       /** Avatar Url */
       avatar_url: string;
+      /** Email Verified */
+      email_verified: boolean;
     };
     /** ImpersonationTargetsResponse */
     ImpersonationTargetsResponse: {

@@ -122,7 +122,7 @@ function ImpersonationDialogContent({
   }
 
   async function enterAs(target: ImpersonationTarget) {
-    if (busy) return;
+    if (busy || !target.email_verified) return;
     setStartingId(target.id);
     setError(null);
     try {
@@ -134,8 +134,19 @@ function ImpersonationDialogContent({
           setStage("password");
           setError("authorizationExpired");
         } else if (requestError.response?.status === 404) {
-          setError("userUnavailable");
-          void users.refetch();
+          const refreshed = await users.refetch();
+          if (refreshed.isSuccess) {
+            const currentTarget = refreshed.data.pages
+              .flatMap((page) => page.users)
+              .find((user) => user.id === target.id);
+            setError(
+              !currentTarget || !currentTarget.email_verified
+                ? "userUnavailable"
+                : "startError",
+            );
+          } else {
+            setError("startError");
+          }
         } else {
           setError("startError");
         }
@@ -235,8 +246,12 @@ function ImpersonationDialogContent({
                 </label>
                 <Input
                   autoFocus
+                  disabled={busy}
                   id={searchId}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setError(null);
+                  }}
                   placeholder={t("usersSearch")}
                   className="pl-10"
                   value={search}
@@ -283,8 +298,8 @@ function ImpersonationDialogContent({
                     {targets.map((target) => (
                       <li key={target.id}>
                         <button
-                          className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand disabled:opacity-60"
-                          disabled={busy}
+                          className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          disabled={busy || !target.email_verified}
                           onClick={() => void enterAs(target)}
                           type="button"
                         >
@@ -296,8 +311,15 @@ function ImpersonationDialogContent({
                             <span className="block truncate text-xs text-muted">
                               {target.email}
                             </span>
+                            {!target.email_verified && (
+                              <span className="block text-xs text-danger">
+                                {t("emailUnverified")}
+                              </span>
+                            )}
                           </span>
-                          <span className="shrink-0 text-sm font-medium text-brand">
+                          <span
+                            className={`shrink-0 text-sm font-medium ${target.email_verified ? "text-brand" : "text-muted"}`}
+                          >
                             {startingId === target.id ? "…" : t("userEnter")}
                           </span>
                         </button>

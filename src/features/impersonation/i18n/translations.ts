@@ -22,8 +22,9 @@ const ru = {
   usersMore: "Показать ещё",
   usersShowing: "Показано {{count}} из {{total}}",
   userEnter: "Войти",
+  emailUnverified: "Почта не подтверждена",
   startError: "Не удалось войти под этим пользователем. Попробуйте ещё раз.",
-  userUnavailable: "Пользователь больше недоступен. Обновите список.",
+  userUnavailable: "Пользователь больше недоступен для входа. Список обновлён.",
   authorizationExpired: "Время подтверждения истекло. Введите пароль снова.",
   close: "Закрыть",
   back: "Назад",
@@ -58,8 +59,10 @@ const en = {
   usersMore: "Show more",
   usersShowing: "Showing {{count}} of {{total}}",
   userEnter: "Enter",
+  emailUnverified: "Email not verified",
   startError: "Could not sign in as this user. Try again.",
-  userUnavailable: "This user is no longer available. Refresh the list.",
+  userUnavailable:
+    "This user is no longer available for sign-in. The list is up to date.",
   authorizationExpired:
     "Your authorization expired. Enter your password again.",
   close: "Close",
