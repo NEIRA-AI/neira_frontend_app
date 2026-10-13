@@ -1,30 +1,47 @@
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import {
   ArrowDown,
   ArrowLeft,
+  ChevronDown,
+  CircleAlert,
   ExternalLink,
   RotateCcw,
+  Trash2,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
+import { useAuth } from "@/features/auth";
 import { ROUTES } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
 import {
+  getMessage,
   messageText,
   type ChatMessage,
   type Conversation,
 } from "../api/conversations-api";
 import { useThreadScroll } from "../hooks/use-thread-scroll";
 import { useChatNotificationSettings } from "../model/chat-notification-context";
-import { sendFailureKind, useSendMessage } from "../model/use-send-message";
+import { useCancelFailedMessages } from "../model/use-cancel-failed-messages";
+import {
+  useRetryAllFailedMessages,
+  type RetryAllProgress,
+} from "../model/use-retry-all-failed-messages";
+import { useRetryMessage } from "../model/use-retry-message";
+import {
+  persistedSendStatus,
+  sendFailureKind,
+} from "../model/use-send-message";
 import { useVisibleMessageRead } from "../model/use-visible-message-read";
 
 import { ChatAvatar } from "./chat-avatar";
 import { MessageComposer } from "./message-composer";
+import { MessagePhoto } from "./message-photo";
 
 function safeExternalUrl(value: string | null) {
   if (!value) return null;
@@ -36,29 +53,211 @@ function safeExternalUrl(value: string | null) {
   }
 }
 
+function FailedMessageStatus({
+  canManage,
+  error,
+  label,
+  onCancel,
+  onRetry,
+  retryBlocked,
+  busy,
+}: {
+  canManage: boolean;
+  error: string;
+  label: string;
+  onCancel: () => void;
+  onRetry: () => void;
+  retryBlocked: boolean;
+  busy: boolean;
+}) {
+  const { t } = useTranslation("chats");
+  const content = (
+    <span className="inline-flex items-center gap-1 text-[10px] text-on-brand/80">
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <span
+            aria-label={!canManage ? error : undefined}
+            className="grid size-4 place-items-center rounded-full bg-surface"
+            role={!canManage ? "img" : undefined}
+            tabIndex={!canManage ? 0 : undefined}
+          >
+            <CircleAlert aria-hidden="true" className="size-3 text-danger" />
+          </span>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            className="z-50 max-w-64 rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-5 text-ink shadow-lg"
+            collisionPadding={8}
+            side="top"
+            sideOffset={7}
+          >
+            {error}
+            <Tooltip.Arrow className="fill-surface" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+      <span>{label}</span>
+      {canManage && <ChevronDown aria-hidden="true" className="size-3" />}
+    </span>
+  );
+
+  if (!canManage) {
+    return <span className="mt-1 flex justify-end rounded">{content}</span>;
+  }
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          aria-description={error}
+          aria-label={t("failedMessageActions")}
+          className="mt-1 ml-auto flex cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          type="button"
+        >
+          {content}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          className="z-50 min-w-44 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-xl"
+          collisionPadding={8}
+          sideOffset={6}
+        >
+          <DropdownMenu.Item
+            className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-brand-soft"
+            disabled={busy || retryBlocked}
+            onSelect={onRetry}
+          >
+            <RotateCcw aria-hidden="true" className="size-4" />
+            {t("retry")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 text-danger outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-danger-soft"
+            disabled={busy}
+            onSelect={onCancel}
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+            {t("cancelFailedMessage")}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+function FailedMessagesBadge({
+  canManage,
+  busy,
+  error,
+  notice,
+  progress,
+  onCancelAll,
+  onRetryAll,
+}: {
+  canManage: boolean;
+  busy: boolean;
+  error: string | null;
+  notice: string | null;
+  progress: string | null;
+  onCancelAll: () => void;
+  onRetryAll: () => void;
+}) {
+  const { t } = useTranslation("chats");
+  const badge = (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-danger-soft px-3 py-1 text-xs font-medium text-danger">
+      <CircleAlert aria-hidden="true" className="size-3.5" />
+      {t("failedMessagesSection")}
+      {canManage && <ChevronDown aria-hidden="true" className="size-3.5" />}
+    </span>
+  );
+  return (
+    <li className="flex flex-col items-center gap-1 py-2">
+      {canManage ? (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              aria-label={t("failedMessagesActions")}
+              className="cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              type="button"
+            >
+              {badge}
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="center"
+              className="z-50 min-w-44 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-xl"
+              collisionPadding={8}
+              sideOffset={6}
+            >
+              <DropdownMenu.Item
+                className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-brand-soft"
+                disabled={busy}
+                onSelect={onRetryAll}
+              >
+                <RotateCcw aria-hidden="true" className="size-4" />
+                {t("retryAllFailedMessages")}
+              </DropdownMenu.Item>
+              <DropdownMenu.Item
+                className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 text-danger outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-danger-soft"
+                disabled={busy}
+                onSelect={onCancelAll}
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+                {t("cancelAllFailedMessages")}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      ) : (
+        badge
+      )}
+      {progress && (
+        <p className="max-w-xs text-center text-xs text-muted" role="status">
+          {progress}
+        </p>
+      )}
+      {notice && (
+        <p className="max-w-xs text-center text-xs text-muted" role="status">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p className="max-w-xs text-center text-xs text-danger" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
 function MessageRow({
-  canSend,
+  canManageFailure,
   message,
   timeFormat,
+  failedTimeFormat,
   unsupportedMessage,
   deliveryStatusText,
   onRetryFailed,
+  onCancelFailed,
   onOpenContact,
   onOpenAuthor,
   retryError,
   retryBlocked,
   retrying,
+  cancelling,
+  actionsBusy,
   unknownParticipant,
 }: {
-  canSend: boolean;
+  canManageFailure: boolean;
   message: ChatMessage;
   timeFormat: Intl.DateTimeFormat;
+  failedTimeFormat: Intl.DateTimeFormat;
   unsupportedMessage: string;
-  deliveryStatusText: Record<
-    "pending" | "failed" | "unknown" | "retry",
-    string
-  >;
+  deliveryStatusText: Record<"pending" | "failed" | "unknown", string>;
   onRetryFailed: (message: ChatMessage) => void;
+  onCancelFailed: (message: ChatMessage) => void;
   onOpenContact: (
     contactId: string | null,
     identityId: string | null,
@@ -69,10 +268,26 @@ function MessageRow({
   retryError: string | null;
   retryBlocked: boolean;
   retrying: boolean;
+  cancelling: boolean;
+  actionsBusy: boolean;
   unknownParticipant: string;
 }) {
   const { t } = useTranslation("chats");
   const text = messageText(message);
+  const photoParts = message.parts
+    .filter((part) => part.kind === "image")
+    .sort((a, b) => a.position - b.position);
+  const photoRefreshRef = useRef<Promise<ChatMessage> | null>(null);
+  const refreshPhotoMessage = useCallback(() => {
+    if (photoRefreshRef.current) return photoRefreshRef.current;
+    const request = getMessage(message.conversation_id, message.id);
+    photoRefreshRef.current = request;
+    const clear = () => {
+      if (photoRefreshRef.current === request) photoRefreshRef.current = null;
+    };
+    void request.then(clear, clear);
+    return request;
+  }, [message.conversation_id, message.id]);
   const isSystem = message.direction === "system";
   const isOutgoing = message.direction === "outbound";
   const deliveryStatus = message.delivery_status;
@@ -82,6 +297,21 @@ function MessageRow({
     deliveryStatus === "unknown"
       ? deliveryStatusText[deliveryStatus]
       : null;
+  const deliveryDetail =
+    deliveryStatus === "failed"
+      ? message.delivery_error_code === "missing_permissions"
+        ? t("messageSendPermissions")
+        : message.delivery_error_code === "connection_unavailable" ||
+            message.delivery_error_code === "channel_credentials_unavailable"
+          ? t("messageSendConnectionUnavailable")
+          : message.delivery_error_code === "photo_upload_failed"
+            ? t("messagePhotoUploadFailed")
+            : null
+      : null;
+  const visibleDeliveryDetail =
+    deliveryStatus === "sent"
+      ? null
+      : retryError || deliveryDetail || t("messageSendFailed");
   const canOpenContact = !isOutgoing && Boolean(message.author_contact_id);
 
   function openAuthor(trigger: HTMLButtonElement) {
@@ -161,34 +391,56 @@ function MessageRow({
               {message.author_name}
             </p>
           ))}
-        <p className="whitespace-pre-wrap break-words text-sm leading-6">
-          {text || unsupportedMessage}
-        </p>
+        {photoParts.length > 0 && (
+          <div
+            className={
+              photoParts.length > 1
+                ? "grid w-[min(68vw,32rem)] max-w-full grid-cols-2 gap-2"
+                : ""
+            }
+          >
+            {photoParts.map((part) => (
+              <MessagePhoto
+                compact={photoParts.length > 1}
+                key={part.id}
+                part={part}
+                refreshMessage={refreshPhotoMessage}
+              />
+            ))}
+          </div>
+        )}
+        {(text || photoParts.length === 0) && (
+          <p
+            className={`whitespace-pre-wrap break-words text-sm leading-6 ${photoParts.length > 0 ? "mt-2" : ""}`}
+          >
+            {text || unsupportedMessage}
+          </p>
+        )}
         <time
           className={`mt-1 block text-right text-[10px] ${isOutgoing ? "text-on-brand/70" : "text-muted"}`}
           dateTime={message.occurred_at}
         >
-          {timeFormat.format(new Date(message.occurred_at))}
+          {(deliveryStatus === "failed" ? failedTimeFormat : timeFormat).format(
+            new Date(message.occurred_at),
+          )}
         </time>
-        {isOutgoing && deliveryLabel && (
-          <p className="mt-1 text-right text-[10px] text-on-brand/80">
-            {deliveryLabel}
-          </p>
-        )}
-        {canSend && isOutgoing && deliveryStatus === "failed" && text && (
-          <button
-            className="mt-1 block rounded px-1 text-xs font-medium text-on-brand underline decoration-on-brand/60 underline-offset-2 hover:decoration-on-brand disabled:opacity-50"
-            disabled={retrying || retryBlocked}
-            onClick={() => onRetryFailed(message)}
-            type="button"
-          >
-            {retrying ? deliveryStatusText.pending : deliveryStatusText.retry}
-          </button>
-        )}
-        {retryError && deliveryStatus === "failed" && (
-          <p className="mt-1 text-xs text-on-brand" role="alert">
-            {retryError}
-          </p>
+        {isOutgoing && deliveryStatus === "failed" && deliveryLabel ? (
+          <FailedMessageStatus
+            busy={retrying || cancelling || actionsBusy}
+            canManage={canManageFailure}
+            error={visibleDeliveryDetail ?? t("messageSendFailed")}
+            label={deliveryLabel}
+            onCancel={() => onCancelFailed(message)}
+            onRetry={() => onRetryFailed(message)}
+            retryBlocked={retryBlocked}
+          />
+        ) : (
+          isOutgoing &&
+          deliveryLabel && (
+            <p className="mt-1 text-right text-[10px] text-on-brand/80">
+              {deliveryLabel}
+            </p>
+          )
         )}
       </div>
       {isOutgoing && (
@@ -248,9 +500,22 @@ export function MessageThread({
   workspaceId: string;
 }) {
   const { t, i18n } = useTranslation("chats");
-  const retrySend = useSendMessage(workspaceId, conversationId);
+  const { user } = useAuth();
+  const retrySend = useRetryMessage(workspaceId, conversationId);
+  const retryAll = useRetryAllFailedMessages(workspaceId, conversationId);
+  const { cancelOne, cancelAll } = useCancelFailedMessages(
+    workspaceId,
+    conversationId,
+  );
   const retryingRef = useRef(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [bulkAction, setBulkAction] = useState<"retry" | "cancel" | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<RetryAllProgress | null>(
+    null,
+  );
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const [uncertainRetryIds, setUncertainRetryIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -285,6 +550,12 @@ export function MessageThread({
     hour: "2-digit",
     minute: "2-digit",
   });
+  const failedTimeFormat = new Intl.DateTimeFormat(i18n.language, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const dayFormat = new Intl.DateTimeFormat(i18n.language, {
     day: "numeric",
     month: "long",
@@ -294,8 +565,17 @@ export function MessageThread({
     pending: t("deliveryPending"),
     failed: t("deliveryFailed"),
     unknown: t("deliveryUnknown"),
-    retry: t("retry"),
   };
+  const deliveredMessages = messages.filter(
+    (message) => message.delivery_status !== "failed",
+  );
+  const failedMessages = messages.filter(
+    (message) => message.delivery_status === "failed",
+  );
+  const hasOwnLoadedFailure = failedMessages.some(
+    (message) => message.author_user_id === user?.id,
+  );
+  const displayedMessages = [...deliveredMessages, ...failedMessages];
   const profileUrl =
     conversation?.kind === "external"
       ? safeExternalUrl(conversation.profile_url)
@@ -311,18 +591,31 @@ export function MessageThread({
     if (
       !canSend ||
       retryingRef.current ||
+      message.author_user_id !== user?.id ||
       uncertainRetryIds.has(message.id) ||
       message.delivery_status !== "failed"
     )
       return;
-    const text = messageText(message);
-    if (!text) return;
     retryingRef.current = true;
     setRetryingId(message.id);
     setRetryError(null);
     try {
-      await retrySend.mutateAsync({ text, clientMessageId: message.id });
+      await retrySend.mutateAsync(message.id);
     } catch (failure) {
+      const persistedStatus = persistedSendStatus(failure, message.id);
+      if (persistedStatus) {
+        if (persistedStatus !== "failed") {
+          setUncertainRetryIds((ids) => new Set(ids).add(message.id));
+          setRetryError({
+            messageId: message.id,
+            text: t("messageSendUncertain"),
+            blocked: true,
+          });
+        }
+        // The refetched message owns the delivery error; avoid a second,
+        // possibly contradictory error under the retry button.
+        return;
+      }
       const kind = sendFailureKind(failure);
       if (kind === "uncertain") {
         setUncertainRetryIds((ids) => new Set(ids).add(message.id));
@@ -338,7 +631,11 @@ export function MessageThread({
                 ? "messageSendUnavailable"
                 : kind === "connection"
                   ? "messageSendConnectionUnavailable"
-                  : "messageSendFailed",
+                  : kind === "permissions"
+                    ? "messageSendPermissions"
+                    : kind === "photo_storage_unavailable"
+                      ? "photoRetryStorageUnavailable"
+                      : "messageSendFailed",
         ),
         blocked:
           kind === "uncertain" ||
@@ -348,6 +645,83 @@ export function MessageThread({
     } finally {
       retryingRef.current = false;
       setRetryingId(null);
+    }
+  }
+
+  async function cancelFailed(message: ChatMessage) {
+    if (
+      !canSend ||
+      retryingRef.current ||
+      message.author_user_id !== user?.id ||
+      message.delivery_status !== "failed"
+    )
+      return;
+    retryingRef.current = true;
+    setCancellingId(message.id);
+    setRetryError(null);
+    try {
+      await cancelOne.mutateAsync(message.id);
+      setUncertainRetryIds((ids) => {
+        const next = new Set(ids);
+        next.delete(message.id);
+        return next;
+      });
+    } catch {
+      setRetryError({
+        messageId: message.id,
+        text: t("cancelFailedMessageError"),
+        blocked: false,
+      });
+    } finally {
+      retryingRef.current = false;
+      setCancellingId(null);
+    }
+  }
+
+  async function cancelAllFailed() {
+    if (!canSend || retryingRef.current) return;
+    retryingRef.current = true;
+    setBulkAction("cancel");
+    setBulkError(null);
+    setBulkNotice(null);
+    try {
+      const cancelledCount = await cancelAll.mutateAsync();
+      if (cancelledCount === 0) setBulkNotice(t("noOwnFailedMessages"));
+    } catch {
+      setBulkError(t("cancelAllFailedMessagesError"));
+    } finally {
+      retryingRef.current = false;
+      setBulkAction(null);
+    }
+  }
+
+  async function retryAllFailed() {
+    if (!canSend || retryingRef.current) return;
+    retryingRef.current = true;
+    setBulkAction("retry");
+    setBulkProgress(null);
+    setBulkError(null);
+    setBulkNotice(null);
+    try {
+      const result = await retryAll.mutateAsync(setBulkProgress);
+      if (result.total === 0) {
+        setBulkNotice(t("noOwnFailedMessages"));
+      } else if (result.stopped) {
+        setBulkError(t("retryAllFailedMessagesError"));
+      } else if (result.succeeded < result.total) {
+        setBulkError(
+          t("retryAllFailedMessagesFinished", {
+            succeeded: result.succeeded,
+            total: result.total,
+          }),
+        );
+      }
+    } catch {
+      setBulkError(t("retryAllFailedMessagesError"));
+    } finally {
+      retryingRef.current = false;
+      setBulkAction(null);
+      setBulkProgress(null);
     }
   }
 
@@ -522,48 +896,87 @@ export function MessageThread({
                   </Button>
                 </div>
               )}
-              <ol className="space-y-3">
-                {messages.map((message, index) => {
-                  const day = new Date(message.occurred_at).toDateString();
-                  const previousMessage = messages[index - 1];
-                  const previousDay = previousMessage
-                    ? new Date(previousMessage.occurred_at).toDateString()
-                    : null;
-                  const showDay = day !== previousDay;
-                  return (
-                    <FragmentWithDay
-                      canSend={canSend}
-                      date={
-                        showDay
-                          ? dayFormat.format(new Date(message.occurred_at))
-                          : null
-                      }
-                      key={message.id}
-                      message={message}
-                      deliveryStatusText={deliveryStatusText}
-                      onRetryFailed={(failedMessage) => {
-                        void retryFailed(failedMessage);
-                      }}
-                      onOpenContact={onOpenContact}
-                      onOpenAuthor={onOpenAuthor}
-                      retryError={
-                        retryError?.messageId === message.id
-                          ? retryError.text
-                          : null
-                      }
-                      retryBlocked={
-                        uncertainRetryIds.has(message.id) ||
-                        (retryError?.messageId === message.id &&
-                          retryError.blocked)
-                      }
-                      retrying={retryingId === message.id}
-                      timeFormat={timeFormat}
-                      unsupportedMessage={t("unsupportedMessage")}
-                      unknownParticipant={t("unknownParticipant")}
-                    />
-                  );
-                })}
-              </ol>
+              <Tooltip.Provider delayDuration={250} skipDelayDuration={150}>
+                <ol className="space-y-3">
+                  {displayedMessages.map((message, index) => {
+                    const isFailed = index >= deliveredMessages.length;
+                    const day = new Date(message.occurred_at).toDateString();
+                    const previousMessage = displayedMessages[index - 1];
+                    const previousDay = previousMessage
+                      ? new Date(previousMessage.occurred_at).toDateString()
+                      : null;
+                    const showDay = !isFailed && day !== previousDay;
+                    return (
+                      <FragmentWithDay
+                        canManageFailure={
+                          canSend && message.author_user_id === user?.id
+                        }
+                        canManageFailedSection={canSend && Boolean(user)}
+                        actionsBusy={
+                          bulkAction !== null ||
+                          retryingId !== null ||
+                          cancellingId !== null
+                        }
+                        bulkProgressText={
+                          isFailed && index === deliveredMessages.length
+                            ? bulkAction === "retry" && bulkProgress
+                              ? t(
+                                  "retryAllFailedMessagesProgress",
+                                  bulkProgress,
+                                )
+                              : null
+                            : null
+                        }
+                        bulkError={bulkError}
+                        bulkNotice={hasOwnLoadedFailure ? null : bulkNotice}
+                        date={
+                          showDay
+                            ? dayFormat.format(new Date(message.occurred_at))
+                            : null
+                        }
+                        failedSectionTitle={
+                          isFailed && index === deliveredMessages.length
+                            ? t("failedMessagesSection")
+                            : null
+                        }
+                        failedTimeFormat={failedTimeFormat}
+                        key={message.id}
+                        message={message}
+                        deliveryStatusText={deliveryStatusText}
+                        onRetryFailed={(failedMessage) => {
+                          void retryFailed(failedMessage);
+                        }}
+                        onCancelFailed={(failedMessage) => {
+                          void cancelFailed(failedMessage);
+                        }}
+                        onRetryAllFailed={() => {
+                          void retryAllFailed();
+                        }}
+                        onCancelAllFailed={() => {
+                          void cancelAllFailed();
+                        }}
+                        onOpenContact={onOpenContact}
+                        onOpenAuthor={onOpenAuthor}
+                        retryError={
+                          retryError?.messageId === message.id
+                            ? retryError.text
+                            : null
+                        }
+                        retryBlocked={
+                          uncertainRetryIds.has(message.id) ||
+                          (retryError?.messageId === message.id &&
+                            retryError.blocked)
+                        }
+                        retrying={retryingId === message.id}
+                        cancelling={cancellingId === message.id}
+                        timeFormat={timeFormat}
+                        unsupportedMessage={t("unsupportedMessage")}
+                        unknownParticipant={t("unknownParticipant")}
+                      />
+                    );
+                  })}
+                </ol>
+              </Tooltip.Provider>
             </div>
           )}
         </div>
@@ -608,30 +1021,48 @@ export function MessageThread({
 }
 
 function FragmentWithDay({
-  canSend,
+  canManageFailure,
+  canManageFailedSection,
+  actionsBusy,
+  bulkProgressText,
+  bulkError,
+  bulkNotice,
   date,
+  failedSectionTitle,
+  failedTimeFormat,
   message,
   timeFormat,
   unsupportedMessage,
   deliveryStatusText,
   onRetryFailed,
+  onCancelFailed,
+  onRetryAllFailed,
+  onCancelAllFailed,
   onOpenContact,
   onOpenAuthor,
   retryError,
   retryBlocked,
   retrying,
+  cancelling,
   unknownParticipant,
 }: {
-  canSend: boolean;
+  canManageFailure: boolean;
+  canManageFailedSection: boolean;
+  actionsBusy: boolean;
+  bulkProgressText: string | null;
+  bulkError: string | null;
+  bulkNotice: string | null;
   date: string | null;
+  failedSectionTitle: string | null;
+  failedTimeFormat: Intl.DateTimeFormat;
   message: ChatMessage;
   timeFormat: Intl.DateTimeFormat;
   unsupportedMessage: string;
-  deliveryStatusText: Record<
-    "pending" | "failed" | "unknown" | "retry",
-    string
-  >;
+  deliveryStatusText: Record<"pending" | "failed" | "unknown", string>;
   onRetryFailed: (message: ChatMessage) => void;
+  onCancelFailed: (message: ChatMessage) => void;
+  onRetryAllFailed: () => void;
+  onCancelAllFailed: () => void;
   onOpenContact: (
     contactId: string | null,
     identityId: string | null,
@@ -642,6 +1073,7 @@ function FragmentWithDay({
   retryError: string | null;
   retryBlocked: boolean;
   retrying: boolean;
+  cancelling: boolean;
   unknownParticipant: string;
 }) {
   return (
@@ -653,16 +1085,31 @@ function FragmentWithDay({
           </span>
         </li>
       )}
+      {failedSectionTitle && (
+        <FailedMessagesBadge
+          busy={actionsBusy}
+          canManage={canManageFailedSection}
+          error={bulkError}
+          notice={bulkNotice}
+          progress={bulkProgressText}
+          onCancelAll={onCancelAllFailed}
+          onRetryAll={onRetryAllFailed}
+        />
+      )}
       <MessageRow
-        canSend={canSend}
+        canManageFailure={canManageFailure}
+        actionsBusy={actionsBusy}
         message={message}
         deliveryStatusText={deliveryStatusText}
+        failedTimeFormat={failedTimeFormat}
         onRetryFailed={onRetryFailed}
+        onCancelFailed={onCancelFailed}
         onOpenContact={onOpenContact}
         onOpenAuthor={onOpenAuthor}
         retryError={retryError}
         retryBlocked={retryBlocked}
         retrying={retrying}
+        cancelling={cancelling}
         timeFormat={timeFormat}
         unsupportedMessage={unsupportedMessage}
         unknownParticipant={unknownParticipant}

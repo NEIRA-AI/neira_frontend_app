@@ -4,6 +4,7 @@ import {
 } from "@microsoft/fetch-event-source";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth";
 import {
@@ -18,7 +19,7 @@ import {
   getMessage,
   messageAuthorsQueryKey,
   messagesQueryKey,
-  messageText,
+  messagePreview,
   unreadChatCountQueryKey,
   type Conversation,
 } from "../api/conversations-api";
@@ -129,6 +130,7 @@ function parseEvent(
 }
 
 export function ChatNotifications({ children }: PropsWithChildren) {
+  const { t } = useTranslation("chats");
   const { status, user, workspaceId } = useAuth();
   const queryClient = useQueryClient();
   const [soundEnabled, setSoundEnabled] = useState(initialSoundEnabled);
@@ -251,7 +253,7 @@ export function ChatNotifications({ children }: PropsWithChildren) {
             conversationId,
             avatarUrl: message.author_avatar_url,
             name: message.author_name || conversation.title,
-            preview: messageText(message),
+            preview: messagePreview(message, t("photo")),
           };
           setToasts((current) =>
             [...current.filter((item) => item.id !== toast.id), toast].slice(
@@ -315,19 +317,22 @@ export function ChatNotifications({ children }: PropsWithChildren) {
           if (payload) invalidateProfile(payload.conversation_id);
           return;
         }
-        if (event.event !== "message" && event.event !== "read") return;
+        if (
+          event.event !== "message" &&
+          event.event !== "read" &&
+          event.event !== "history"
+        )
+          return;
         const payload = parseEvent(event.data);
         if (!payload) return;
         invalidateConversation(payload.conversation_id);
-        if (event.event === "message") {
-          if (payload.message_id) {
-            void showIncomingToast(payload.conversation_id, payload.message_id);
-          } else {
-            const conversation = queryClient.getQueryData<Conversation>(
-              conversationQueryKey(activeWorkspaceId!, payload.conversation_id),
-            );
-            if (conversation) invalidateContactInquiries(conversation);
-          }
+        if (event.event === "message" && payload.message_id) {
+          void showIncomingToast(payload.conversation_id, payload.message_id);
+        } else if (event.event === "history" || event.event === "message") {
+          const conversation = queryClient.getQueryData<Conversation>(
+            conversationQueryKey(activeWorkspaceId!, payload.conversation_id),
+          );
+          if (conversation) invalidateContactInquiries(conversation);
         }
       },
       onclose() {
@@ -350,7 +355,7 @@ export function ChatNotifications({ children }: PropsWithChildren) {
       activeTimers.forEach((timer) => window.clearTimeout(timer));
       activeTimers.clear();
     };
-  }, [queryClient, userId, workspaceId]);
+  }, [queryClient, t, userId, workspaceId]);
 
   return (
     <ChatNotificationContext.Provider value={{ soundEnabled, setSoundEnabled }}>

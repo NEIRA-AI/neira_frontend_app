@@ -1,5 +1,5 @@
 import { api } from "@/shared/api/client";
-import type { components } from "@/shared/api/generated/schema";
+import type { components, paths } from "@/shared/api/generated/schema";
 
 export type ChatMessage = components["schemas"]["ConversationMessage"];
 export type MessageAuthor = components["schemas"]["ConversationMessageAuthor"];
@@ -8,9 +8,18 @@ export type ConversationPage = components["schemas"]["ConversationPage"];
 export type MessagePage = components["schemas"]["ConversationMessagePage"];
 export type SendMessageRequest =
   components["schemas"]["ConversationSendRequest"];
+type SendPhotoBody =
+  paths["/api/v1/conversations/{conversation_id}/messages/photo"]["post"]["requestBody"]["content"]["multipart/form-data"];
+type SendPhotoRequest = {
+  clientMessageId: SendPhotoBody["client_message_id"];
+  photo: File;
+  caption: SendPhotoBody["caption"];
+};
 type UnreadChatCount = components["schemas"]["ConversationUnreadCount"];
 type ReadRequest = components["schemas"]["ConversationReadRequest"];
 type ReadResult = components["schemas"]["ConversationReadResult"];
+type CancelResult = components["schemas"]["ConversationCancelResult"];
+type FailedMessagePage = components["schemas"]["ConversationFailedMessagePage"];
 
 export const conversationsQueryKey = (workspaceId: string) =>
   ["private", "conversations", workspaceId] as const;
@@ -108,6 +117,69 @@ export async function sendMessage(
   return data;
 }
 
+export async function sendPhoto(
+  conversationId: string,
+  request: SendPhotoRequest,
+): Promise<ChatMessage> {
+  const form = new FormData();
+  form.append("client_message_id", request.clientMessageId);
+  form.append("photo", request.photo);
+  if (request.caption) form.append("caption", request.caption);
+
+  const { data } = await api.post<ChatMessage>(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/photo`,
+    form,
+    { workspace: true, timeout: 120_000 },
+  );
+  return data;
+}
+
+export async function retryMessage(
+  conversationId: string,
+  messageId: string,
+): Promise<ChatMessage> {
+  const { data } = await api.post<ChatMessage>(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/retry`,
+    undefined,
+    { workspace: true, timeout: 120_000 },
+  );
+  return data;
+}
+
+export async function cancelFailedMessage(
+  conversationId: string,
+  messageId: string,
+): Promise<void> {
+  await api.delete(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+    { workspace: true },
+  );
+}
+
+export async function cancelAllFailedMessages(
+  conversationId: string,
+): Promise<number> {
+  const { data } = await api.delete<CancelResult>(
+    `/conversations/${encodeURIComponent(conversationId)}/failed-messages`,
+    { workspace: true },
+  );
+  return data.cancelled_count;
+}
+
+export async function listFailedMessageIds(
+  conversationId: string,
+  cursor: string | null,
+): Promise<FailedMessagePage> {
+  const { data } = await api.get<FailedMessagePage>(
+    `/conversations/${encodeURIComponent(conversationId)}/failed-messages`,
+    {
+      params: { limit: 100, cursor: cursor ?? undefined },
+      workspace: true,
+    },
+  );
+  return data;
+}
+
 export async function markMessagesRead(
   conversationId: string,
   messageIds: string[],
@@ -128,4 +200,14 @@ export function messageText(message: ChatMessage | null): string {
     .filter((part) => part.kind === "text" && part.text)
     .map((part) => part.text)
     .join(" ");
+}
+
+export function messagePreview(
+  message: ChatMessage | null,
+  photoLabel: string,
+): string {
+  if (!message) return "";
+  const text = messageText(message);
+  if (!message.parts.some((part) => part.kind === "image")) return text;
+  return text ? `${photoLabel} · ${text}` : photoLabel;
 }

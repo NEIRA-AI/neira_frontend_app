@@ -7,12 +7,16 @@ import { channelProviders } from "@/features/channels";
 import { messageConversationPath } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
-import { messageText, type Conversation } from "../api/conversations-api";
+import { messagePreview, type Conversation } from "../api/conversations-api";
 
 import { ChatAvatar } from "./chat-avatar";
 
-function previewText(conversation: Conversation, fallback: string) {
-  const text = messageText(conversation.last_message);
+function previewText(
+  conversation: Conversation,
+  fallback: string,
+  photoLabel: string,
+) {
+  const text = messagePreview(conversation.last_message, photoLabel);
   if (!conversation.last_message) return fallback;
   return text || fallback;
 }
@@ -165,7 +169,11 @@ export function ConversationList({
                         </span>
                         <span className="mt-1 flex min-w-0 items-center gap-2">
                           <span className="min-w-0 flex-1 truncate text-xs text-muted">
-                            {previewText(conversation, t("unsupportedMessage"))}
+                            {previewText(
+                              conversation,
+                              t("unsupportedMessage"),
+                              t("photo"),
+                            )}
                           </span>
                           {conversation.unread_count > 0 && (
                             <span

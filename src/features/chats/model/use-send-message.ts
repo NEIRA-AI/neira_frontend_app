@@ -1,7 +1,39 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
-import { conversationsQueryKey, sendMessage } from "../api/conversations-api";
+import {
+  conversationsQueryKey,
+  sendMessage,
+  sendPhoto,
+} from "../api/conversations-api";
+
+type SendInput =
+  | { kind?: "text"; text: string; clientMessageId: string }
+  | { kind: "photo"; photo: File; caption: string; clientMessageId: string };
+
+function sendErrorDetail(error: unknown): Record<string, unknown> | null {
+  if (!axios.isAxiosError(error)) return null;
+  const body: unknown = error.response?.data;
+  const detail =
+    body && typeof body === "object"
+      ? (body as Record<string, unknown>).detail
+      : null;
+  return detail && typeof detail === "object"
+    ? (detail as Record<string, unknown>)
+    : null;
+}
+
+export function persistedSendStatus(
+  error: unknown,
+  messageId: string,
+): "failed" | "unknown" | "pending" | null {
+  const detail = sendErrorDetail(error);
+  if (detail?.message_id !== messageId) return null;
+  const status = detail.delivery_status;
+  return status === "failed" || status === "unknown" || status === "pending"
+    ? status
+    : null;
+}
 
 export function sendFailureKind(
   error: unknown,
@@ -11,27 +43,41 @@ export function sendFailureKind(
   | "forbidden"
   | "unavailable"
   | "connection"
+  | "permissions"
   | "conflict"
+  | "photo_invalid"
+  | "photo_too_large"
+  | "photo_caption_too_long"
+  | "photo_storage_unavailable"
   | "general" {
   if (!axios.isAxiosError(error)) return "uncertain";
   if (!error.response) return "uncertain";
-  if (error.response?.status === 403) return "forbidden";
-  if (error.response?.status === 404) return "unavailable";
-  const body: unknown = error.response?.data;
-  if (!body || typeof body !== "object") return "general";
-  const detail = (body as Record<string, unknown>).detail;
-  if (!detail || typeof detail !== "object") return "general";
-  const code = (detail as Record<string, unknown>).code;
+  if (error.response?.status === 413) return "photo_too_large";
+  if (error.response?.status === 415) return "photo_invalid";
+  const errorDetail = sendErrorDetail(error);
+  const code = errorDetail?.code;
+  if (
+    code === "unsupported_photo" ||
+    code === "invalid_photo" ||
+    code === "unsupported_photo_type"
+  )
+    return "photo_invalid";
+  if (code === "photo_too_large") return "photo_too_large";
+  if (code === "caption_too_long") return "photo_caption_too_long";
+  if (code === "photo_storage_unavailable") return "photo_storage_unavailable";
   if (
     code === "connection_unavailable" ||
     code === "channel_credentials_unavailable"
   )
     return "connection";
-  const status = (detail as Record<string, unknown>).delivery_status;
+  if (code === "missing_permissions") return "permissions";
+  const status = errorDetail?.delivery_status;
   if (status === "failed") return "failed";
   if (status === "unknown" || status === "pending") return "uncertain";
   if (code === "unsupported_conversation") return "unavailable";
   if (code === "client_message_conflict") return "conflict";
+  if (error.response.status === 403) return "forbidden";
+  if (error.response.status === 404) return "unavailable";
   return "general";
 }
 
@@ -39,17 +85,13 @@ export function useSendMessage(workspaceId: string, conversationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      text,
-      clientMessageId,
-    }: {
-      text: string;
-      clientMessageId: string;
-    }) =>
-      sendMessage(conversationId, {
-        text,
-        client_message_id: clientMessageId,
-      }),
+    mutationFn: (input: SendInput) =>
+      input.kind === "photo"
+        ? sendPhoto(conversationId, input)
+        : sendMessage(conversationId, {
+            text: input.text,
+            client_message_id: input.clientMessageId,
+          }),
     onSettled: () =>
       queryClient.invalidateQueries({
         queryKey: conversationsQueryKey(workspaceId),

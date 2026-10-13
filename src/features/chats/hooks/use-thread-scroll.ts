@@ -22,7 +22,7 @@ export function useThreadScroll({
   const scrollRef = useRef<HTMLDivElement>(null);
   const olderSentinelRef = useRef<HTMLDivElement>(null);
   const initializedIdRef = useRef<string | null>(null);
-  const newestRef = useRef<{ id: string; sequence: number } | null>(null);
+  const newestRef = useRef<string | null>(null);
   const atBottomRef = useRef(true);
   const snapshotRef = useRef<{
     height: number;
@@ -40,7 +40,7 @@ export function useThreadScroll({
 
     if (initializedIdRef.current !== conversationId) {
       initializedIdRef.current = conversationId;
-      newestRef.current = { id: newest.id, sequence: newest.sequence };
+      newestRef.current = newest.id;
       snapshotRef.current = null;
       root.scrollTop = root.scrollHeight;
       atBottomRef.current = true;
@@ -56,18 +56,14 @@ export function useThreadScroll({
     }
 
     const previous = newestRef.current;
-    if (
-      previous &&
-      previous.id !== newest.id &&
-      newest.sequence > previous.sequence
-    ) {
+    if (previous && previous !== newest.id) {
       if (atBottomRef.current) {
         root.scrollTop = root.scrollHeight;
       } else {
         setHasNewMessage(true);
       }
     }
-    newestRef.current = { id: newest.id, sequence: newest.sequence };
+    newestRef.current = newest.id;
   }, [conversationId, messages, newest]);
 
   useEffect(() => {

@@ -1080,7 +1080,8 @@ export interface paths {
     get: operations["get_message_api_v1_conversations__conversation_id__messages__message_id__get"];
     put?: never;
     post?: never;
-    delete?: never;
+    /** Cancel Failed Message */
+    delete: operations["cancel_failed_message_api_v1_conversations__conversation_id__messages__message_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1098,6 +1099,58 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conversations/{conversation_id}/messages/photo": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Send Photo */
+    post: operations["send_photo_api_v1_conversations__conversation_id__messages_photo_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conversations/{conversation_id}/messages/{message_id}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Retry Failed Message */
+    post: operations["retry_failed_message_api_v1_conversations__conversation_id__messages__message_id__retry_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conversations/{conversation_id}/failed-messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Failed Messages */
+    get: operations["list_failed_messages_api_v1_conversations__conversation_id__failed_messages_get"];
+    put?: never;
+    post?: never;
+    /** Cancel All Failed Messages */
+    delete: operations["cancel_all_failed_messages_api_v1_conversations__conversation_id__failed_messages_delete"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1252,6 +1305,21 @@ export interface components {
     BackupCodesResponse: {
       /** Backup Codes */
       backup_codes: string[];
+    };
+    /** Body_send_photo_api_v1_conversations__conversation_id__messages_photo_post */
+    Body_send_photo_api_v1_conversations__conversation_id__messages_photo_post: {
+      /** Photo */
+      photo: string;
+      /**
+       * Client Message Id
+       * Format: uuid
+       */
+      client_message_id: string;
+      /**
+       * Caption
+       * @default
+       */
+      caption: string;
     };
     /** Body_upload_avatar_api_v1_auth_me_avatar_post */
     Body_upload_avatar_api_v1_auth_me_avatar_post: {
@@ -1543,6 +1611,11 @@ export interface components {
       /** Phone */
       phone?: string | null;
     };
+    /** ConversationCancelResult */
+    ConversationCancelResult: {
+      /** Cancelled Count */
+      cancelled_count: number;
+    };
     /** ConversationChannelAuthor */
     ConversationChannelAuthor: {
       /**
@@ -1570,6 +1643,13 @@ export interface components {
       profile_url: string | null;
       /** Archived */
       archived: boolean;
+    };
+    /** ConversationFailedMessagePage */
+    ConversationFailedMessagePage: {
+      /** Items */
+      items: string[];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /** ConversationMessage */
     ConversationMessage: {
@@ -1625,10 +1705,29 @@ export interface components {
     };
     /** ConversationMessagePart */
     ConversationMessagePart: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Position */
+      position: number;
       /** Kind */
       kind: string;
       /** Text */
       text: string | null;
+      /** Media Type */
+      media_type: string | null;
+      /** Size Bytes */
+      size_bytes: number | null;
+      /** Width */
+      width: number | null;
+      /** Height */
+      height: number | null;
+      /** Media Url */
+      media_url: string | null;
+      /** Media Url Expires At */
+      media_url_expires_at: string | null;
     };
     /** ConversationPage */
     ConversationPage: {
@@ -4861,6 +4960,38 @@ export interface operations {
       };
     };
   };
+  cancel_failed_message_api_v1_conversations__conversation_id__messages__message_id__delete: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+        message_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_message_author_api_v1_conversations__conversation_id__messages__message_id__author_get: {
     parameters: {
       query?: never;
@@ -4882,6 +5013,146 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ConversationMessageAuthor"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_photo_api_v1_conversations__conversation_id__messages_photo_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_send_photo_api_v1_conversations__conversation_id__messages_photo_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationMessage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  retry_failed_message_api_v1_conversations__conversation_id__messages__message_id__retry_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+        message_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationMessage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_failed_messages_api_v1_conversations__conversation_id__failed_messages_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationFailedMessagePage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancel_all_failed_messages_api_v1_conversations__conversation_id__failed_messages_delete: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationCancelResult"];
         };
       };
       /** @description Validation Error */
