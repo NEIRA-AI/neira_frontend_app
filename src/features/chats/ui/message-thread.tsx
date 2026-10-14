@@ -42,7 +42,27 @@ import { useVisibleMessageRead } from "../model/use-visible-message-read";
 import { ChatAvatar } from "./chat-avatar";
 import { MessageComposer } from "./message-composer";
 import { MessageFile } from "./message-file";
-import { MessagePhoto } from "./message-photo";
+import { MessagePhotoMosaic } from "./message-photo-mosaic";
+import { MessagePhotoViewer } from "./message-photo-viewer";
+
+type MessagePart = ChatMessage["parts"][number];
+type MediaGroup =
+  | { kind: "photos"; parts: MessagePart[] }
+  | { kind: "file"; part: MessagePart };
+
+function groupMediaParts(parts: MessagePart[]): MediaGroup[] {
+  const groups: MediaGroup[] = [];
+  for (const part of parts) {
+    if (part.kind === "image") {
+      const last = groups[groups.length - 1];
+      if (last?.kind === "photos") last.parts.push(part);
+      else groups.push({ kind: "photos", parts: [part] });
+    } else {
+      groups.push({ kind: "file", part });
+    }
+  }
+  return groups;
+}
 
 function safeExternalUrl(value: string | null) {
   if (!value) return null;
@@ -73,7 +93,7 @@ function FailedMessageStatus({
 }) {
   const { t } = useTranslation("chats");
   const content = (
-    <span className="inline-flex items-center gap-1 text-[10px] text-on-brand/80">
+    <span className="inline-flex items-center gap-1 text-[10px] text-muted">
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
           <span
@@ -278,8 +298,10 @@ function MessageRow({
   const mediaParts = message.parts
     .filter((part) => part.kind === "image" || part.kind === "file")
     .sort((a, b) => a.position - b.position);
-  const photoGrid =
-    mediaParts.length > 1 && mediaParts.every((part) => part.kind === "image");
+  const photoParts = mediaParts.filter((part) => part.kind === "image");
+  const hasPhotos = photoParts.length > 0;
+  const mediaGroups = groupMediaParts(mediaParts);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
   const mediaRefreshRef = useRef<Promise<ChatMessage> | null>(null);
   const refreshMediaMessage = useCallback(() => {
     if (mediaRefreshRef.current) return mediaRefreshRef.current;
@@ -374,7 +396,7 @@ function MessageRow({
           />
         ))}
       <div
-        className={`max-w-[min(85%,38rem)] rounded-2xl px-4 py-3 shadow-sm ${isOutgoing ? "rounded-br-md bg-brand-fill text-on-brand" : "rounded-bl-md border border-line bg-surface text-ink"}`}
+        className={`max-w-[min(85%,38rem)] rounded-2xl border border-line bg-surface text-ink shadow-sm ${hasPhotos ? "overflow-hidden" : "px-4 py-3"} ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
       >
         {message.author_name &&
           (isOutgoing || canOpenContact ? (
@@ -385,78 +407,92 @@ function MessageRow({
                   name: message.author_name,
                 },
               )}
-              className={`mb-1 block cursor-pointer rounded text-left text-xs font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${isOutgoing ? "text-on-brand/80" : "text-brand"}`}
+              className={`${hasPhotos ? "mx-3 mt-2 mb-2" : "mb-1"} block cursor-pointer rounded text-left text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}
               onClick={(event) => openAuthor(event.currentTarget)}
               type="button"
             >
               {message.author_name}
             </button>
           ) : (
-            <p className="mb-1 text-xs font-semibold text-brand">
+            <p
+              className={`${hasPhotos ? "mx-3 mt-2 mb-2" : "mb-1"} text-xs font-semibold text-brand`}
+            >
               {message.author_name}
             </p>
           ))}
         {mediaParts.length > 0 && (
-          <div
-            className={
-              photoGrid
-                ? "grid w-[min(68vw,32rem)] max-w-full grid-cols-2 gap-2"
-                : "space-y-2"
-            }
-          >
-            {mediaParts.map((part) =>
-              part.kind === "image" ? (
-                <MessagePhoto
-                  compact={photoGrid}
-                  key={part.id}
-                  part={part}
+          <div className={hasPhotos ? "flex flex-col gap-[2px]" : "space-y-2"}>
+            {mediaGroups.map((group) =>
+              group.kind === "photos" ? (
+                <MessagePhotoMosaic
+                  allPhotos={photoParts}
+                  key={group.parts[0]?.id ?? message.id}
+                  onOpen={setSelectedPhotoId}
+                  photos={group.parts}
                   refreshMessage={refreshMediaMessage}
                 />
               ) : (
-                <MessageFile
-                  key={part.id}
-                  outgoing={isOutgoing}
-                  part={part}
-                  refreshMessage={refreshMediaMessage}
-                />
+                <div
+                  className={hasPhotos ? "px-3 py-2" : undefined}
+                  key={group.part.id}
+                >
+                  <MessageFile
+                    part={group.part}
+                    refreshMessage={refreshMediaMessage}
+                  />
+                </div>
               ),
             )}
           </div>
         )}
-        {(text || mediaParts.length === 0) && (
-          <p
-            className={`whitespace-pre-wrap break-words text-sm leading-6 ${mediaParts.length > 0 ? "mt-2" : ""}`}
-          >
-            {text || unsupportedMessage}
-          </p>
-        )}
-        <time
-          className={`mt-1 block text-right text-[10px] ${isOutgoing ? "text-on-brand/70" : "text-muted"}`}
-          dateTime={message.occurred_at}
-        >
-          {(deliveryStatus === "failed" ? failedTimeFormat : timeFormat).format(
-            new Date(message.occurred_at),
-          )}
-        </time>
-        {isOutgoing && deliveryStatus === "failed" && deliveryLabel ? (
-          <FailedMessageStatus
-            busy={retrying || cancelling || actionsBusy}
-            canManage={canManageFailure}
-            error={visibleDeliveryDetail ?? t("messageSendFailed")}
-            label={deliveryLabel}
-            onCancel={() => onCancelFailed(message)}
-            onRetry={() => onRetryFailed(message)}
-            retryBlocked={retryBlocked}
-          />
-        ) : (
-          isOutgoing &&
-          deliveryLabel && (
-            <p className="mt-1 text-right text-[10px] text-on-brand/80">
-              {deliveryLabel}
+        <div className={hasPhotos ? "px-3 pt-2 pb-2" : undefined}>
+          {(text || mediaParts.length === 0) && (
+            <p
+              className={`whitespace-pre-wrap break-words text-sm leading-6 ${mediaParts.length > 0 && !hasPhotos ? "mt-2" : ""}`}
+            >
+              {text || unsupportedMessage}
             </p>
-          )
-        )}
+          )}
+          <time
+            className="mt-1 block text-right text-[10px] text-muted"
+            dateTime={message.occurred_at}
+          >
+            {(deliveryStatus === "failed"
+              ? failedTimeFormat
+              : timeFormat
+            ).format(new Date(message.occurred_at))}
+          </time>
+          {isOutgoing && deliveryStatus === "failed" && deliveryLabel ? (
+            <FailedMessageStatus
+              busy={retrying || cancelling || actionsBusy}
+              canManage={canManageFailure}
+              error={visibleDeliveryDetail ?? t("messageSendFailed")}
+              label={deliveryLabel}
+              onCancel={() => onCancelFailed(message)}
+              onRetry={() => onRetryFailed(message)}
+              retryBlocked={retryBlocked}
+            />
+          ) : (
+            isOutgoing &&
+            deliveryLabel && (
+              <p className="mt-1 text-right text-[10px] text-muted">
+                {deliveryLabel}
+              </p>
+            )
+          )}
+        </div>
       </div>
+      {hasPhotos && (
+        <MessagePhotoViewer
+          authorAvatarUrl={message.author_avatar_url}
+          authorName={message.author_name || unknownParticipant}
+          onSelectedPhotoIdChange={setSelectedPhotoId}
+          occurredAt={message.occurred_at}
+          photos={photoParts}
+          refreshMessage={refreshMediaMessage}
+          selectedPhotoId={selectedPhotoId}
+        />
+      )}
       {isOutgoing && (
         <button
           aria-label={t("openAuthorPanel", {

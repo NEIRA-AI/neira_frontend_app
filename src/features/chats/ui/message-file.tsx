@@ -20,11 +20,9 @@ function usableFileUrl(part: FilePart): string | null {
 }
 
 export function MessageFile({
-  outgoing,
   part,
   refreshMessage,
 }: {
-  outgoing: boolean;
   part: FilePart;
   refreshMessage: () => Promise<ChatMessage>;
 }) {
@@ -67,14 +65,12 @@ export function MessageFile({
     <div className="max-w-full">
       <button
         aria-label={t("downloadFile", { name: fileName })}
-        className={`flex w-[min(68vw,20rem)] max-w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait ${outgoing ? "bg-on-brand/10 hover:bg-on-brand/20" : "bg-subtle hover:bg-subtle/70"}`}
+        className="flex w-[min(68vw,20rem)] max-w-full cursor-pointer items-center gap-3 rounded-xl bg-subtle px-3 py-2.5 text-left transition-colors hover:bg-subtle/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-wait"
         disabled={downloading}
         onClick={() => void download()}
         type="button"
       >
-        <span
-          className={`grid size-10 shrink-0 place-items-center rounded-lg ${outgoing ? "bg-on-brand/15" : "bg-surface"}`}
-        >
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-surface">
           <FileText aria-hidden="true" className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
@@ -86,11 +82,7 @@ export function MessageFile({
             {fileName}
           </span>
           {sizeLabel && (
-            <span
-              className={`block text-xs ${outgoing ? "text-on-brand/70" : "text-muted"}`}
-            >
-              {sizeLabel}
-            </span>
+            <span className="block text-xs text-muted">{sizeLabel}</span>
           )}
         </span>
         {downloading ? (
@@ -103,10 +95,7 @@ export function MessageFile({
         )}
       </button>
       {error && (
-        <p
-          className={`mt-1 text-xs ${outgoing ? "text-on-brand" : "text-danger"}`}
-          role="alert"
-        >
+        <p className="mt-1 text-xs text-danger" role="alert">
           {t("fileUnavailable")}
         </p>
       )}

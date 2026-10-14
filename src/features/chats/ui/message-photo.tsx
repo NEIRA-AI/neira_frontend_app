@@ -26,11 +26,15 @@ function photoAspectRatio(part: MessagePart): number {
 }
 
 export function MessagePhoto({
-  compact = false,
+  layout = "single",
+  onOpen,
+  openLabel,
   part,
   refreshMessage,
 }: {
-  compact?: boolean;
+  layout?: "single" | "tile" | "viewer";
+  onOpen?: () => void;
+  openLabel?: string;
   part: MessagePart;
   refreshMessage: () => Promise<ChatMessage>;
 }) {
@@ -80,45 +84,90 @@ export function MessagePhoto({
     };
   }, [refreshUrl]);
 
+  const canOpen = Boolean(onOpen) && layout !== "viewer";
+  const image = imageUrl && (
+    <img
+      alt={canOpen ? "" : t("photoAlt")}
+      className={
+        layout === "viewer"
+          ? "block h-auto w-auto max-h-full max-w-full object-contain"
+          : `h-full w-full ${layout === "tile" ? "object-cover" : "object-contain"}`
+      }
+      decoding="async"
+      height={part.height ?? undefined}
+      key={`${imageUrl}:${loadVersion}`}
+      loading="lazy"
+      onError={() => {
+        if (autoRefreshedRef.current) {
+          setState("error");
+        } else {
+          autoRefreshedRef.current = true;
+          void refreshUrl();
+        }
+      }}
+      onLoad={() => setState("ready")}
+      referrerPolicy="no-referrer"
+      src={imageUrl}
+      width={part.width ?? undefined}
+    />
+  );
+
   return (
     <div
-      className={`relative max-w-full overflow-hidden rounded-xl bg-subtle ${compact ? "w-full" : "w-[min(68vw,20rem)]"}`}
-      style={{ aspectRatio: photoAspectRatio(part) }}
+      className={`relative max-w-full overflow-hidden ${layout === "viewer" ? "bg-transparent" : "bg-subtle"} ${layout === "single" ? "w-[min(78vw,22rem)]" : "h-full w-full"}`}
+      style={
+        layout === "single"
+          ? { aspectRatio: photoAspectRatio(part) }
+          : undefined
+      }
     >
-      {imageUrl && (
-        <img
-          alt={t("photoAlt")}
-          className="absolute inset-0 h-full w-full object-contain"
-          decoding="async"
-          height={part.height ?? undefined}
-          key={`${imageUrl}:${loadVersion}`}
-          loading="lazy"
-          onError={() => {
-            if (autoRefreshedRef.current) {
-              setState("error");
-            } else {
-              autoRefreshedRef.current = true;
-              void refreshUrl();
+      {canOpen && image ? (
+        <button
+          aria-label={openLabel ?? t("photoAlt")}
+          className="absolute inset-0 h-full w-full cursor-zoom-in p-0 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+          disabled={state !== "ready"}
+          onClick={onOpen}
+          type="button"
+        >
+          {image}
+        </button>
+      ) : (
+        image && (
+          <div
+            className={
+              layout === "viewer"
+                ? "absolute inset-0 flex items-center justify-center"
+                : "absolute inset-0"
             }
-          }}
-          onLoad={() => setState("ready")}
-          referrerPolicy="no-referrer"
-          src={imageUrl}
-          width={part.width ?? undefined}
-        />
+          >
+            {image}
+          </div>
+        )
       )}
       {(state === "loading" || state === "refreshing") && (
-        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-subtle text-xs text-muted">
+        <div
+          className={`absolute inset-0 flex items-center justify-center gap-2 text-xs ${layout === "viewer" ? "bg-transparent text-on-dark/70" : "bg-subtle text-muted"}`}
+        >
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-          <span>{t("photoLoading")}</span>
+          <span className={layout === "tile" ? "sr-only" : undefined}>
+            {t("photoLoading")}
+          </span>
         </div>
       )}
       {state === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-subtle px-3 text-center text-xs text-muted">
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center text-xs ${layout === "viewer" ? "bg-transparent text-on-dark/70" : "bg-subtle text-muted"}`}
+        >
           <ImageOff aria-hidden="true" className="size-5" />
-          <span role="alert">{t("photoUnavailable")}</span>
+          <span
+            className={layout === "tile" ? "sr-only" : undefined}
+            role="alert"
+          >
+            {t("photoUnavailable")}
+          </span>
           <button
-            className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            aria-label={layout === "tile" ? t("photoRetry") : undefined}
+            className={`inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 ${layout === "viewer" ? "text-on-dark focus-visible:outline-on-dark" : "text-brand focus-visible:outline-brand"}`}
             onClick={() => {
               autoRefreshedRef.current = true;
               void refreshUrl();
@@ -126,7 +175,9 @@ export function MessagePhoto({
             type="button"
           >
             <RotateCcw aria-hidden="true" className="size-3" />
-            {t("photoRetry")}
+            <span className={layout === "tile" ? "sr-only" : undefined}>
+              {t("photoRetry")}
+            </span>
           </button>
         </div>
       )}
