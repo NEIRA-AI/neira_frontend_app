@@ -1023,6 +1023,7 @@ export function MessageThread({
       {canSend ? (
         <MessageComposer
           conversationId={conversationId}
+          provider={conversation?.channel_provider ?? null}
           workspaceId={workspaceId}
         />
       ) : (

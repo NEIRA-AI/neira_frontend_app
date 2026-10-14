@@ -48,6 +48,13 @@ const ru = {
   emojiPickerTitle: "Эмодзи",
   insertEmoji: "Вставить эмодзи: {{name}}",
   removeAttachment: "Убрать вложение",
+  removeAttachmentNamed: "Убрать вложение {{name}}",
+  selectedAttachments: "Выбрано вложений: {{count}}",
+  attachmentMessageCount: "Сообщений после отправки: {{count}}",
+  sendingAttachmentBatch: "Отправляем сообщение {{current}} из {{total}}…",
+  mediaBatchStopped:
+    "Отправка остановлена. Оставшиеся вложения остались в поле ввода.",
+  discardUncertainDraft: "Очистить черновик",
   selectedPhotoAlt: "Выбранное фото",
   photoEmpty: "Выбранный файл пустой. Выберите другое фото.",
   photoTooLarge: "Фото не должно превышать 10 МБ.",
@@ -59,6 +66,8 @@ const ru = {
   fileTooLarge: "Файл не должен превышать 20 МБ.",
   fileStorageUnavailable:
     "Не удалось сохранить файл. Проверьте доступность хранилища и попробуйте снова.",
+  mediaStorageUnavailable:
+    "Не удалось сохранить вложения. Проверьте доступность хранилища и попробуйте снова.",
   photoStorageUnavailable:
     "Не удалось сохранить фото. Проверьте доступность хранилища и попробуйте снова.",
   photoRetryStorageUnavailable:
@@ -221,6 +230,13 @@ const en = {
   emojiPickerTitle: "Emoji",
   insertEmoji: "Insert emoji: {{name}}",
   removeAttachment: "Remove attachment",
+  removeAttachmentNamed: "Remove attachment {{name}}",
+  selectedAttachments: "Attachments selected: {{count}}",
+  attachmentMessageCount: "Messages to send: {{count}}",
+  sendingAttachmentBatch: "Sending message {{current}} of {{total}}…",
+  mediaBatchStopped:
+    "Sending stopped. The remaining attachments are still in the composer.",
+  discardUncertainDraft: "Discard draft",
   selectedPhotoAlt: "Selected photo",
   photoEmpty: "The selected file is empty. Choose another photo.",
   photoTooLarge: "Photos cannot exceed 10 MB.",
@@ -232,6 +248,8 @@ const en = {
   fileTooLarge: "Files cannot exceed 20 MB.",
   fileStorageUnavailable:
     "Could not save the file. Check storage availability and try again.",
+  mediaStorageUnavailable:
+    "Could not save the attachments. Check storage availability and try again.",
   photoStorageUnavailable:
     "Could not save the photo. Check storage availability and try again.",
   photoRetryStorageUnavailable:

@@ -22,6 +22,17 @@ type SendFileRequest = {
   file: File;
   caption: SendFileBody["caption"];
 };
+type SendMediaBody =
+  paths["/api/v1/conversations/{conversation_id}/messages/media"]["post"]["requestBody"]["content"]["multipart/form-data"];
+export type MediaAttachment = {
+  kind: SendMediaBody["attachment_kinds"][number];
+  file: File;
+};
+type SendMediaRequest = {
+  clientMessageId: SendMediaBody["client_message_id"];
+  attachments: MediaAttachment[];
+  caption: SendMediaBody["caption"];
+};
 type UnreadChatCount = components["schemas"]["ConversationUnreadCount"];
 type ReadRequest = components["schemas"]["ConversationReadRequest"];
 type ReadResult = components["schemas"]["ConversationReadResult"];
@@ -152,6 +163,26 @@ export async function sendFile(
 
   const { data } = await api.post<ChatMessage>(
     `/conversations/${encodeURIComponent(conversationId)}/messages/file`,
+    form,
+    { workspace: true, timeout: 300_000 },
+  );
+  return data;
+}
+
+export async function sendMedia(
+  conversationId: string,
+  request: SendMediaRequest,
+): Promise<ChatMessage> {
+  const form = new FormData();
+  form.append("client_message_id", request.clientMessageId);
+  if (request.caption) form.append("caption", request.caption);
+  for (const attachment of request.attachments) {
+    form.append("attachments", attachment.file);
+    form.append("attachment_kinds", attachment.kind);
+  }
+
+  const { data } = await api.post<ChatMessage>(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/media`,
     form,
     { workspace: true, timeout: 300_000 },
   );

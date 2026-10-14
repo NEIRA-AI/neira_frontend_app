@@ -1138,6 +1138,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conversations/{conversation_id}/messages/media": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Send Media */
+    post: operations["send_media_api_v1_conversations__conversation_id__messages_media_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/conversations/{conversation_id}/messages/{message_id}/retry": {
     parameters: {
       query?: never;
@@ -1327,6 +1344,23 @@ export interface components {
     Body_send_file_api_v1_conversations__conversation_id__messages_file_post: {
       /** File */
       file: string;
+      /**
+       * Client Message Id
+       * Format: uuid
+       */
+      client_message_id: string;
+      /**
+       * Caption
+       * @default
+       */
+      caption: string;
+    };
+    /** Body_send_media_api_v1_conversations__conversation_id__messages_media_post */
+    Body_send_media_api_v1_conversations__conversation_id__messages_media_post: {
+      /** Attachments */
+      attachments: string[];
+      /** Attachment Kinds */
+      attachment_kinds: ("photo" | "file")[];
       /**
        * Client Message Id
        * Format: uuid
@@ -5111,6 +5145,43 @@ export interface operations {
     requestBody: {
       content: {
         "multipart/form-data": components["schemas"]["Body_send_file_api_v1_conversations__conversation_id__messages_file_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationMessage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_media_api_v1_conversations__conversation_id__messages_media_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_send_media_api_v1_conversations__conversation_id__messages_media_post"];
       };
     };
     responses: {

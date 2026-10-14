@@ -4,14 +4,22 @@ import axios from "axios";
 import {
   conversationsQueryKey,
   sendFile,
+  sendMedia,
   sendMessage,
   sendPhoto,
+  type MediaAttachment,
 } from "../api/conversations-api";
 
 type SendInput =
   | { kind?: "text"; text: string; clientMessageId: string }
   | { kind: "photo"; photo: File; caption: string; clientMessageId: string }
-  | { kind: "file"; file: File; caption: string; clientMessageId: string };
+  | { kind: "file"; file: File; caption: string; clientMessageId: string }
+  | {
+      kind: "media";
+      attachments: MediaAttachment[];
+      caption: string;
+      clientMessageId: string;
+    };
 
 function sendErrorDetail(error: unknown): Record<string, unknown> | null {
   if (!axios.isAxiosError(error)) return null;
@@ -39,7 +47,7 @@ export function persistedSendStatus(
 
 export function sendFailureKind(
   error: unknown,
-  attachmentKind?: "photo" | "file" | "text",
+  attachmentKind?: "photo" | "file" | "media" | "text",
 ):
   | "failed"
   | "uncertain"
@@ -56,6 +64,7 @@ export function sendFailureKind(
   | "file_too_large"
   | "file_caption_too_long"
   | "file_storage_unavailable"
+  | "media_storage_unavailable"
   | "general" {
   if (!axios.isAxiosError(error)) return "uncertain";
   if (!error.response) return "uncertain";
@@ -77,10 +86,15 @@ export function sendFailureKind(
   if (code === "file_too_large") return "file_too_large";
   if (code === "file_caption_too_long") return "file_caption_too_long";
   if (code === "file_storage_unavailable") return "file_storage_unavailable";
+  if (code === "media_storage_unavailable") return "media_storage_unavailable";
   if (error.response.status === 413)
-    return attachmentKind === "file" ? "file_too_large" : "photo_too_large";
+    return attachmentKind === "file" || attachmentKind === "media"
+      ? "file_too_large"
+      : "photo_too_large";
   if (error.response.status === 415)
-    return attachmentKind === "file" ? "failed" : "photo_invalid";
+    return attachmentKind === "file" || attachmentKind === "media"
+      ? "failed"
+      : "photo_invalid";
   if (
     code === "connection_unavailable" ||
     code === "channel_credentials_unavailable"
@@ -94,6 +108,7 @@ export function sendFailureKind(
   if (code === "client_message_conflict") return "conflict";
   if (error.response.status === 403) return "forbidden";
   if (error.response.status === 404) return "unavailable";
+  if (error.response.status >= 500) return "uncertain";
   return "general";
 }
 
@@ -106,10 +121,12 @@ export function useSendMessage(workspaceId: string, conversationId: string) {
         ? sendPhoto(conversationId, input)
         : input.kind === "file"
           ? sendFile(conversationId, input)
-          : sendMessage(conversationId, {
-              text: input.text,
-              client_message_id: input.clientMessageId,
-            }),
+          : input.kind === "media"
+            ? sendMedia(conversationId, input)
+            : sendMessage(conversationId, {
+                text: input.text,
+                client_message_id: input.clientMessageId,
+              }),
     onSettled: () =>
       queryClient.invalidateQueries({
         queryKey: conversationsQueryKey(workspaceId),
