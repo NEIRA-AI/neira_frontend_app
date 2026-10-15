@@ -94,6 +94,7 @@ export function MessagePhoto({
           : `h-full w-full ${layout === "tile" ? "object-cover" : "object-contain"}`
       }
       decoding="async"
+      data-viewer-photo={layout === "viewer" ? true : undefined}
       height={part.height ?? undefined}
       key={`${imageUrl}:${loadVersion}`}
       loading="lazy"

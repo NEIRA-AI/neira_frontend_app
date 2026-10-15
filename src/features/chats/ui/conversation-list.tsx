@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 
+import { useAuth } from "@/features/auth";
 import { channelProviders } from "@/features/channels";
 import { messageConversationPath } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
@@ -17,10 +18,19 @@ function previewText(
   conversation: Conversation,
   fallback: string,
   labels: { photo: string; file: string; voice: string },
+  currentUserId: string | null,
+  youLabel: string,
 ) {
-  const text = messagePreview(conversation.last_message, labels);
-  if (!conversation.last_message) return fallback;
-  return text || fallback;
+  const message = conversation.last_message;
+  if (!message) return fallback;
+  const text = messagePreview(message, labels) || fallback;
+  const authorName =
+    conversation.kind === "external" && message.direction === "outbound"
+      ? currentUserId && message.author_user_id === currentUserId
+        ? youLabel
+        : message.author_name?.trim()
+      : null;
+  return authorName ? `${authorName}: ${text}` : text;
 }
 
 function ConversationRow({
@@ -33,6 +43,7 @@ function ConversationRow({
   timeFormat: Intl.DateTimeFormat;
 }) {
   const { t } = useTranslation("chats");
+  const { user } = useAuth();
   const { getSettings, settingsReady } = useChatNotificationSettings();
   const { notificationsEnabled, soundEnabled } = getSettings(conversation.id);
   const provider = channelProviders.find(
@@ -105,11 +116,17 @@ function ConversationRow({
               </span>
               <span className="mt-1 flex min-w-0 items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-xs text-muted">
-                  {previewText(conversation, t("unsupportedMessage"), {
-                    photo: t("photo"),
-                    file: t("file"),
-                    voice: t("voice"),
-                  })}
+                  {previewText(
+                    conversation,
+                    t("unsupportedMessage"),
+                    {
+                      photo: t("photo"),
+                      file: t("file"),
+                      voice: t("voice"),
+                    },
+                    user?.id ?? null,
+                    t("you"),
+                  )}
                 </span>
                 {conversation.unread_count > 0 && (
                   <span

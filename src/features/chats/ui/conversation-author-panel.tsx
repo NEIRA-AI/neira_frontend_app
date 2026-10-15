@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowUpRight, ExternalLink, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ExternalLink, RotateCcw } from "lucide-react";
 import { type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
@@ -178,21 +178,23 @@ function UserAuthorDetails({
 
 export function ConversationAuthorPanel({
   avatarUrl,
-  closeButtonRef,
+  backButtonRef,
   conversationId,
   messageId,
   mode,
   name,
-  onClose,
+  onBack,
+  titleRef,
   workspaceId,
 }: {
   avatarUrl: string | null;
-  closeButtonRef: RefObject<HTMLButtonElement | null>;
+  backButtonRef: RefObject<HTMLButtonElement | null>;
   conversationId: string;
   messageId: string;
   mode: "drawer" | "inline";
   name: string;
-  onClose: () => void;
+  onBack?: () => void;
+  titleRef: RefObject<HTMLHeadingElement | null>;
   workspaceId: string;
 }) {
   const { t } = useTranslation("chats");
@@ -214,22 +216,26 @@ export function ConversationAuthorPanel({
       className={`flex h-full min-h-0 min-w-0 flex-col border-l border-line bg-surface ${mode === "drawer" ? "w-full shadow-xl" : ""}`}
       id="chat-author-panel"
     >
-      <header className="flex min-h-18 shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-3">
+      <header className="flex min-h-18 shrink-0 items-center gap-2 border-b border-line px-5 py-3">
+        {onBack && (
+          <button
+            aria-label={t("backToContactPanel")}
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+            onClick={onBack}
+            ref={backButtonRef}
+            type="button"
+          >
+            <ArrowLeft aria-hidden="true" className="size-5" />
+          </button>
+        )}
         <h2
-          className="truncate text-base font-semibold text-ink"
+          className="truncate rounded text-base font-semibold text-ink focus-visible:outline-2 focus-visible:outline-brand"
           id="chat-author-panel-title"
+          ref={titleRef}
+          tabIndex={-1}
         >
           {panelTitle}
         </h2>
-        <button
-          aria-label={t("closeAuthorPanel")}
-          className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
-          onClick={onClose}
-          ref={closeButtonRef}
-          type="button"
-        >
-          <X aria-hidden="true" className="size-5" />
-        </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="flex flex-col items-center bg-brand-soft px-5 py-7 text-center">

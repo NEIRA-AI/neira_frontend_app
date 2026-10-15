@@ -1,8 +1,29 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ChatMessage } from "../api/conversations-api";
 
 const bottomThreshold = 96;
+
+function scrollToMessage(
+  root: HTMLDivElement,
+  messageId: string,
+  behavior: ScrollBehavior,
+) {
+  const message = Array.from(
+    root.querySelectorAll<HTMLElement>("[data-message-id]"),
+  ).find((item) => item.dataset.messageId === messageId);
+  if (!message) return false;
+
+  root.scrollTo({
+    top:
+      root.scrollTop +
+      message.getBoundingClientRect().bottom -
+      root.getBoundingClientRect().bottom +
+      16,
+    behavior,
+  });
+  return true;
+}
 
 export function useThreadScroll({
   conversationId,
@@ -11,6 +32,8 @@ export function useThreadScroll({
   isFetchingNextPage,
   messages,
   onLoadMore,
+  visibleMessages,
+  visibleMessagesHidden,
 }: {
   conversationId: string;
   hasNextPage: boolean;
@@ -18,11 +41,15 @@ export function useThreadScroll({
   isFetchingNextPage: boolean;
   messages: ChatMessage[];
   onLoadMore: () => void;
+  visibleMessages: ChatMessage[];
+  visibleMessagesHidden: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const olderSentinelRef = useRef<HTMLDivElement>(null);
   const initializedIdRef = useRef<string | null>(null);
   const newestRef = useRef<string | null>(null);
+  const visibleIdsRef = useRef<Set<string>>(new Set());
+  const visibleMessagesHiddenRef = useRef(visibleMessagesHidden);
   const atBottomRef = useRef(true);
   const snapshotRef = useRef<{
     height: number;
@@ -33,6 +60,14 @@ export function useThreadScroll({
   const [hasNewMessage, setHasNewMessage] = useState(false);
 
   const newest = messages.at(-1);
+  const visibleIds = useMemo(
+    () => new Set(visibleMessages.map((message) => message.id)),
+    [visibleMessages],
+  );
+  const newestVisibleMessageId =
+    messages.findLast((message) => visibleIds.has(message.id))?.id ?? null;
+  const newestIsDisplayedLast =
+    visibleMessages.at(-1)?.id === newestVisibleMessageId;
 
   useLayoutEffect(() => {
     const root = scrollRef.current;
@@ -40,7 +75,9 @@ export function useThreadScroll({
 
     if (initializedIdRef.current !== conversationId) {
       initializedIdRef.current = conversationId;
-      newestRef.current = newest.id;
+      newestRef.current = newestVisibleMessageId;
+      visibleIdsRef.current = visibleIds;
+      visibleMessagesHiddenRef.current = visibleMessagesHidden;
       snapshotRef.current = null;
       root.scrollTop = root.scrollHeight;
       atBottomRef.current = true;
@@ -56,15 +93,42 @@ export function useThreadScroll({
     }
 
     const previous = newestRef.current;
-    if (previous && previous !== newest.id) {
+    const visibilityChanged =
+      visibleMessagesHiddenRef.current !== visibleMessagesHidden;
+    const newVisibleMessage =
+      !visibilityChanged &&
+      previous &&
+      newestVisibleMessageId &&
+      !visibleIdsRef.current.has(newestVisibleMessageId);
+    if (newVisibleMessage) {
       if (atBottomRef.current) {
-        root.scrollTop = root.scrollHeight;
+        if (
+          !newestIsDisplayedLast &&
+          scrollToMessage(root, newestVisibleMessageId, "auto")
+        ) {
+          atBottomRef.current = false;
+          setIsAtBottom(false);
+        } else {
+          root.scrollTop = root.scrollHeight;
+        }
       } else {
         setHasNewMessage(true);
       }
+    } else if (previous && !visibleIds.has(previous)) {
+      setHasNewMessage(false);
     }
-    newestRef.current = newest.id;
-  }, [conversationId, messages, newest]);
+    newestRef.current = newestVisibleMessageId;
+    visibleIdsRef.current = visibleIds;
+    visibleMessagesHiddenRef.current = visibleMessagesHidden;
+  }, [
+    conversationId,
+    messages,
+    newest,
+    newestIsDisplayedLast,
+    newestVisibleMessageId,
+    visibleIds,
+    visibleMessagesHidden,
+  ]);
 
   useEffect(() => {
     if (!isFetchingNextPage && snapshotRef.current?.count === messages.length) {
@@ -139,6 +203,20 @@ export function useThreadScroll({
     setHasNewMessage(false);
   }
 
+  function jumpToNewMessage() {
+    const root = scrollRef.current;
+    if (!root) return;
+    const latestId = newestRef.current;
+    if (
+      !latestId ||
+      newestIsDisplayedLast ||
+      !scrollToMessage(root, latestId, "smooth")
+    ) {
+      root.scrollTo({ top: root.scrollHeight, behavior: "smooth" });
+    }
+    setHasNewMessage(false);
+  }
+
   return {
     scrollRef,
     olderSentinelRef,
@@ -146,5 +224,6 @@ export function useThreadScroll({
     hasNewMessage,
     onScroll,
     jumpToBottom,
+    jumpToNewMessage,
   };
 }

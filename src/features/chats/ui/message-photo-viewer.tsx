@@ -54,6 +54,16 @@ export function MessagePhotoViewer({
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed inset-0 z-[71] grid h-dvh grid-rows-[4rem_minmax(0,1fr)_3rem] text-on-dark outline-none"
+          onClick={(event) => {
+            if (
+              event.target instanceof Element &&
+              (event.target.closest("[data-viewer-photo]") ||
+                event.target.closest("button"))
+            ) {
+              return;
+            }
+            onSelectedPhotoIdChange(null);
+          }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             returnFocusRef.current?.focus();
@@ -119,7 +129,7 @@ export function MessagePhotoViewer({
             <>
               <button
                 aria-label={t("photoViewerPrevious")}
-                className="absolute top-16 bottom-12 left-0 z-10 flex w-16 cursor-pointer items-center justify-center hover:bg-on-dark/5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-on-dark disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent sm:w-20"
+                className="absolute top-1/2 left-2 z-10 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full hover:bg-on-dark/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-dark disabled:pointer-events-none disabled:opacity-0 sm:left-4"
                 disabled={selectedIndex <= 0}
                 onClick={() => selectOffset(-1)}
                 type="button"
@@ -131,7 +141,7 @@ export function MessagePhotoViewer({
               </button>
               <button
                 aria-label={t("photoViewerNext")}
-                className="absolute top-16 right-0 bottom-12 z-10 flex w-16 cursor-pointer items-center justify-center hover:bg-on-dark/5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-on-dark disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent sm:w-20"
+                className="absolute top-1/2 right-2 z-10 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full hover:bg-on-dark/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-dark disabled:pointer-events-none disabled:opacity-0 sm:right-4"
                 disabled={selectedIndex >= images.length - 1}
                 onClick={() => selectOffset(1)}
                 type="button"

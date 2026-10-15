@@ -1,11 +1,9 @@
 import axios from "axios";
 import {
   ArrowUpRight,
-  ExternalLink,
   MessageSquareText,
   RotateCcw,
   UserRound,
-  X,
 } from "lucide-react";
 import { type RefObject } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,15 +11,10 @@ import { Link } from "react-router";
 
 import { channelProviders } from "@/features/channels";
 import { type ContactDetail, useContact } from "@/features/contacts";
-import {
-  contactDetailsPath,
-  messageConversationPath,
-} from "@/shared/config/routes";
+import { contactDetailsPath } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
-import type { Conversation } from "../api/conversations-api";
-
-import { ChatAvatar } from "./chat-avatar";
+import { ChatAvatarPhoto } from "./chat-avatar-photo";
 import { ConversationInquiries } from "./conversation-inquiries";
 
 type Identity = ContactDetail["identities"][number];
@@ -60,13 +53,7 @@ function profileCity(identity: Identity) {
     : null;
 }
 
-function IdentityDetails({
-  identity,
-  conversationId,
-}: {
-  identity: Identity;
-  conversationId: string;
-}) {
+function IdentityDetails({ identity }: { identity: Identity }) {
   const { t, i18n } = useTranslation("chats");
   const provider = channelProviders.find(
     (item) => item.id === identity.provider,
@@ -90,25 +77,41 @@ function IdentityDetails({
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const platformConversation = identity.platform_conversations.find(
-    (item) => item.conversation_id === conversationId,
+  const providerSummary = (
+    <>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+        {provider ? (
+          <img alt="" className="size-5 object-contain" src={provider.icon} />
+        ) : (
+          <MessageSquareText aria-hidden="true" className="size-5" />
+        )}
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-ink">{providerName}</h3>
+        <p className="truncate text-xs text-muted">{identity.display_name}</p>
+      </div>
+    </>
   );
 
   return (
     <section className="border-t border-line px-5 py-5">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
-          {provider ? (
-            <img alt="" className="size-5 object-contain" src={provider.icon} />
-          ) : (
-            <MessageSquareText aria-hidden="true" className="size-5" />
-          )}
-        </span>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-ink">{providerName}</h3>
-          <p className="truncate text-xs text-muted">{identity.display_name}</p>
-        </div>
-      </div>
+      {profileUrl ? (
+        <a
+          aria-label={`${t("openProviderProfile", { provider: providerName })}: ${identity.display_name}`}
+          className="group -mx-2 flex min-w-0 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 opacity-90 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          href={profileUrl}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {providerSummary}
+          <ArrowUpRight
+            aria-hidden="true"
+            className="ml-auto size-4 shrink-0 translate-y-1 text-muted opacity-0 transition-[opacity,translate] duration-300 ease-in-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 motion-reduce:transition-none"
+          />
+        </a>
+      ) : (
+        <div className="flex min-w-0 items-center gap-3">{providerSummary}</div>
+      )}
 
       <dl className="mt-4 space-y-3 text-sm">
         {username && (
@@ -155,21 +158,10 @@ function IdentityDetails({
         </div>
       </dl>
 
-      <div className="mt-5 flex flex-col gap-2 text-sm">
-        {profileUrl && (
+      {providerDialogUrl && (
+        <div className="mt-5 flex flex-col gap-2 text-sm">
           <a
-            className="inline-flex w-fit items-center gap-2 text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            href={profileUrl}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <ExternalLink aria-hidden="true" className="size-4" />
-            {t("openProviderProfile", { provider: providerName })}
-          </a>
-        )}
-        {providerDialogUrl && (
-          <a
-            className="inline-flex w-fit items-center gap-2 text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="inline-flex w-fit cursor-pointer items-center gap-2 text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             href={providerDialogUrl}
             rel="noopener noreferrer"
             target="_blank"
@@ -177,40 +169,27 @@ function IdentityDetails({
             <MessageSquareText aria-hidden="true" className="size-4" />
             {t("openProviderDialog", { provider: providerName })}
           </a>
-        )}
-        {platformConversation && (
-          <Link
-            className="inline-flex w-fit items-center gap-2 text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            to={messageConversationPath(platformConversation.conversation_id)}
-          >
-            <MessageSquareText aria-hidden="true" className="size-4" />
-            {t("openPlatformDialog")}
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
 
 export function ConversationContactPanel({
   contactId,
-  conversation,
   fallbackAvatarUrl,
   fallbackName,
   identityId,
   mode,
-  onClose,
-  closeButtonRef,
+  titleRef,
   workspaceId,
 }: {
   contactId: string | null;
-  conversation: Conversation;
   fallbackAvatarUrl: string | null;
   fallbackName: string;
   identityId: string | null;
   mode: "drawer" | "inline";
-  onClose: () => void;
-  closeButtonRef: RefObject<HTMLButtonElement | null>;
+  titleRef: RefObject<HTMLHeadingElement | null>;
   workspaceId: string;
 }) {
   const { t } = useTranslation("chats");
@@ -219,6 +198,9 @@ export function ConversationContactPanel({
   const identity =
     contact?.identities.find((item) => item.id === identityId) ??
     (contact?.identities.length === 1 ? contact.identities[0] : null);
+  const avatarName = contact?.display_name ?? fallbackName;
+  const avatarUrl =
+    identity?.avatar_url ?? contact?.avatar_url ?? fallbackAvatarUrl;
   const identities = contact?.identities ?? [];
   const orderedIdentities = identity
     ? [identity, ...identities.filter((item) => item.id !== identity.id)]
@@ -234,38 +216,30 @@ export function ConversationContactPanel({
       className={`flex h-full min-h-0 min-w-0 flex-col border-l border-line bg-surface ${mode === "drawer" ? "w-full shadow-xl" : ""}`}
       id="chat-contact-panel"
     >
-      <header className="flex min-h-18 shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-3">
+      <header className="flex min-h-18 shrink-0 items-center border-b border-line px-5 py-3">
         <h2
-          className="truncate text-base font-semibold text-ink"
+          className="truncate rounded text-base font-semibold text-ink focus-visible:outline-2 focus-visible:outline-brand"
           id="chat-contact-panel-title"
+          ref={titleRef}
+          tabIndex={-1}
         >
           {t("contactPanelTitle")}
         </h2>
-        <button
-          aria-label={t("closeContactPanel")}
-          className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
-          onClick={onClose}
-          ref={closeButtonRef}
-          type="button"
-        >
-          <X aria-hidden="true" className="size-5" />
-        </button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="flex flex-col items-center bg-brand-soft px-5 py-7 text-center">
-          <ChatAvatar
-            name={contact?.display_name ?? fallbackName}
-            size="xl"
-            url={
-              identity?.avatar_url ?? contact?.avatar_url ?? fallbackAvatarUrl
-            }
-          />
+          <ChatAvatarPhoto name={avatarName} size="xl" url={avatarUrl} />
           <h3 className="mt-3 max-w-full break-words text-lg font-semibold text-ink">
-            {contact?.display_name ?? fallbackName}
+            {avatarName}
           </h3>
           {contact && (
-            <Button asChild className="mt-4" size="sm" variant="outline">
+            <Button
+              asChild
+              className="mt-4 cursor-pointer"
+              size="sm"
+              variant="outline"
+            >
               <Link to={contactDetailsPath(contact.id)}>
                 <UserRound aria-hidden="true" className="size-4" />
                 {t("openFullContact")}
@@ -289,7 +263,7 @@ export function ConversationContactPanel({
               {t("contactLoadError")}
             </p>
             <Button
-              className="mt-3"
+              className="mt-3 cursor-pointer"
               onClick={() => void contactQuery.refetch()}
               size="sm"
               variant="outline"
@@ -325,11 +299,7 @@ export function ConversationContactPanel({
             />
             {orderedIdentities.length ? (
               orderedIdentities.map((item) => (
-                <IdentityDetails
-                  conversationId={conversation.id}
-                  identity={item}
-                  key={item.id}
-                />
+                <IdentityDetails identity={item} key={item.id} />
               ))
             ) : (
               <p className="border-t border-line px-5 py-5 text-sm text-muted">

@@ -5,8 +5,11 @@ import {
   ArrowLeft,
   ChevronDown,
   CircleAlert,
-  ExternalLink,
+  Eye,
+  EyeOff,
   MoreHorizontal,
+  PanelRightClose,
+  PanelRightOpen,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -15,7 +18,8 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { useAuth } from "@/features/auth";
-import { ROUTES } from "@/shared/config/routes";
+import { channelProviders, useChannel } from "@/features/channels";
+import { channelDetailsPath, ROUTES } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
 import {
@@ -38,6 +42,7 @@ import {
 import { useVisibleMessageRead } from "../model/use-visible-message-read";
 
 import { ChatAvatar } from "./chat-avatar";
+import { ChatAvatarPhoto } from "./chat-avatar-photo";
 import { ChatNotificationMenu } from "./chat-notification-menu";
 import { MessageComposer } from "./message-composer";
 import { MessageEditHistory } from "./message-edit-history";
@@ -51,6 +56,39 @@ type MediaGroup =
   | { kind: "photos"; parts: MessagePart[] }
   | { kind: "file" | "voice"; part: MessagePart };
 
+type MessageDayGroup = {
+  kind: "day" | "failed";
+  key: string;
+  messages: [ChatMessage, ...ChatMessage[]];
+};
+
+function groupMessagesForDisplay(messages: ChatMessage[]): MessageDayGroup[] {
+  const groups: MessageDayGroup[] = [];
+  for (const message of messages) {
+    const kind = message.delivery_status === "failed" ? "failed" : "day";
+    const key =
+      kind === "failed"
+        ? "failed"
+        : new Date(message.occurred_at).toDateString();
+    const previous = groups.at(-1);
+    if (previous?.kind === kind && previous.key === key) {
+      previous.messages.push(message);
+    } else {
+      groups.push({ kind, key, messages: [message] });
+    }
+  }
+  return groups;
+}
+
+function readFailedMessagesHidden(storageKey: string | null) {
+  if (!storageKey || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(storageKey) === "true";
+  } catch {
+    return false;
+  }
+}
+
 function groupMediaParts(parts: MessagePart[]): MediaGroup[] {
   const groups: MediaGroup[] = [];
   for (const part of parts) {
@@ -63,16 +101,6 @@ function groupMediaParts(parts: MessagePart[]): MediaGroup[] {
     }
   }
   return groups;
-}
-
-function safeExternalUrl(value: string | null) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" ? url.href : null;
-  } catch {
-    return null;
-  }
 }
 
 function FailedMessageStatus({
@@ -172,47 +200,65 @@ function FailedMessagesBadge({
   canManage,
   busy,
   error,
+  hidden,
   notice,
   progress,
   onCancelAll,
   onRetryAll,
+  onToggleHidden,
 }: {
   canManage: boolean;
   busy: boolean;
   error: string | null;
+  hidden: boolean;
   notice: string | null;
   progress: string | null;
   onCancelAll: () => void;
   onRetryAll: () => void;
+  onToggleHidden: () => void;
 }) {
   const { t } = useTranslation("chats");
   const badge = (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-danger-soft px-3 py-1 text-xs font-medium text-danger">
       <CircleAlert aria-hidden="true" className="size-3.5" />
       {t("failedMessagesSection")}
-      {canManage && <ChevronDown aria-hidden="true" className="size-3.5" />}
+      <ChevronDown aria-hidden="true" className="size-3.5" />
     </span>
   );
   return (
     <li className="flex flex-col items-center gap-1 py-2">
-      {canManage ? (
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button
-              aria-label={t("failedMessagesActions")}
-              className="cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              type="button"
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            aria-label={t("failedMessagesActions")}
+            className="cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            type="button"
+          >
+            {badge}
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="center"
+            className="z-50 min-w-44 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-xl"
+            collisionPadding={8}
+            sideOffset={6}
+          >
+            <DropdownMenu.Item
+              className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 outline-none data-highlighted:bg-brand-soft"
+              onSelect={onToggleHidden}
             >
-              {badge}
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              align="center"
-              className="z-50 min-w-44 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-xl"
-              collisionPadding={8}
-              sideOffset={6}
-            >
+              {hidden ? (
+                <Eye aria-hidden="true" className="size-4" />
+              ) : (
+                <EyeOff aria-hidden="true" className="size-4" />
+              )}
+              {t(hidden ? "showFailedMessages" : "hideFailedMessages")}
+            </DropdownMenu.Item>
+            {canManage && (
+              <DropdownMenu.Separator className="my-1 h-px bg-line" />
+            )}
+            {canManage && (
               <DropdownMenu.Item
                 className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-brand-soft"
                 disabled={busy}
@@ -221,6 +267,8 @@ function FailedMessagesBadge({
                 <RotateCcw aria-hidden="true" className="size-4" />
                 {t("retryAllFailedMessages")}
               </DropdownMenu.Item>
+            )}
+            {canManage && (
               <DropdownMenu.Item
                 className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 text-danger outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-danger-soft"
                 disabled={busy}
@@ -229,12 +277,10 @@ function FailedMessagesBadge({
                 <Trash2 aria-hidden="true" className="size-4" />
                 {t("cancelAllFailedMessages")}
               </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-      ) : (
-        badge
-      )}
+            )}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
       {progress && (
         <p className="max-w-xs text-center text-xs text-muted" role="status">
           {progress}
@@ -306,6 +352,11 @@ function MessageRow({
     .sort((a, b) => a.position - b.position);
   const photoParts = mediaParts.filter((part) => part.kind === "image");
   const hasPhotos = photoParts.length > 0;
+  const isPhotoOnly =
+    hasPhotos &&
+    !text.trim() &&
+    mediaParts.every((part) => part.kind === "image");
+  const hasMessageText = Boolean(text) || mediaParts.length === 0;
   const mediaGroups = groupMediaParts(mediaParts);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
   const mediaRefreshRef = useRef<Promise<ChatMessage> | null>(null);
@@ -346,6 +397,29 @@ function MessageRow({
       ? null
       : retryError || deliveryDetail || t("messageSendFailed");
   const canOpenContact = !isOutgoing && Boolean(message.author_contact_id);
+  const hasFailedStatus =
+    isOutgoing && deliveryStatus === "failed" && Boolean(deliveryLabel);
+  const otherDeliveryLabel =
+    isOutgoing && deliveryStatus !== "failed" ? deliveryLabel : null;
+  const messageMeta = (
+    <>
+      {otherDeliveryLabel && <span>{otherDeliveryLabel}</span>}
+      {message.edited_at && (
+        <span className="pointer-events-auto">
+          <MessageEditHistory
+            conversationId={message.conversation_id}
+            messageId={message.id}
+            workspaceId={workspaceId}
+          />
+        </span>
+      )}
+      <time dateTime={message.occurred_at}>
+        {(deliveryStatus === "failed" ? failedTimeFormat : timeFormat).format(
+          new Date(message.occurred_at),
+        )}
+      </time>
+    </>
+  );
 
   function openAuthor(trigger: HTMLButtonElement) {
     if (isOutgoing) {
@@ -402,7 +476,7 @@ function MessageRow({
           />
         ))}
       <div
-        className={`max-w-[min(85%,38rem)] rounded-2xl border border-line bg-surface text-ink shadow-sm ${hasPhotos ? "overflow-hidden" : "px-4 py-3"} ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
+        className={`${hasPhotos ? `${photoParts.length > 1 ? "w-[min(85%,32rem)]" : "w-[min(85%,22rem)]"} overflow-hidden` : "max-w-[min(85%,38rem)] px-3 py-2"} rounded-2xl border border-line bg-surface text-ink shadow-sm ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
       >
         {message.author_name &&
           (isOutgoing || canOpenContact ? (
@@ -427,7 +501,13 @@ function MessageRow({
             </p>
           ))}
         {mediaParts.length > 0 && (
-          <div className={hasPhotos ? "flex flex-col gap-[2px]" : "space-y-2"}>
+          <div
+            className={
+              hasPhotos
+                ? "relative flex w-full min-w-0 flex-col gap-[2px]"
+                : "space-y-2"
+            }
+          >
             {mediaGroups.map((group) =>
               group.kind === "photos" ? (
                 <MessagePhotoMosaic
@@ -456,50 +536,45 @@ function MessageRow({
                 </div>
               ),
             )}
+            {isPhotoOnly && (
+              <div className="pointer-events-none absolute right-2 bottom-2 z-10 inline-flex items-center gap-1 rounded-md bg-overlay px-1.5 py-1 text-[10px] leading-none text-on-dark shadow-sm">
+                {messageMeta}
+              </div>
+            )}
           </div>
         )}
-        <div className={hasPhotos ? "px-3 pt-2 pb-2" : undefined}>
-          {(text || mediaParts.length === 0) && (
-            <p
-              className={`whitespace-pre-wrap break-words text-sm leading-6 ${mediaParts.length > 0 && !hasPhotos ? "mt-2" : ""}`}
-            >
-              {text || unsupportedMessage}
-            </p>
-          )}
-          <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-muted">
-            {message.edited_at && (
-              <MessageEditHistory
-                conversationId={message.conversation_id}
-                messageId={message.id}
-                workspaceId={workspaceId}
+        {(!isPhotoOnly || hasFailedStatus) && (
+          <div className={hasPhotos ? "px-3 py-1.5" : undefined}>
+            {!isPhotoOnly &&
+              (hasMessageText ? (
+                <p
+                  className={`flex items-end gap-2 ${mediaParts.length > 0 && !hasPhotos ? "mt-2" : ""}`}
+                >
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-5">
+                    {text || unsupportedMessage}
+                  </span>
+                  <span className="inline-flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[10px] leading-3 text-muted">
+                    {messageMeta}
+                  </span>
+                </p>
+              ) : (
+                <div className="flex justify-end gap-1 text-[10px] leading-3 text-muted">
+                  {messageMeta}
+                </div>
+              ))}
+            {hasFailedStatus && (
+              <FailedMessageStatus
+                busy={retrying || cancelling || actionsBusy}
+                canManage={canManageFailure}
+                error={visibleDeliveryDetail ?? t("messageSendFailed")}
+                label={deliveryLabel ?? ""}
+                onCancel={() => onCancelFailed(message)}
+                onRetry={() => onRetryFailed(message)}
+                retryBlocked={retryBlocked}
               />
             )}
-            <time dateTime={message.occurred_at}>
-              {(deliveryStatus === "failed"
-                ? failedTimeFormat
-                : timeFormat
-              ).format(new Date(message.occurred_at))}
-            </time>
           </div>
-          {isOutgoing && deliveryStatus === "failed" && deliveryLabel ? (
-            <FailedMessageStatus
-              busy={retrying || cancelling || actionsBusy}
-              canManage={canManageFailure}
-              error={visibleDeliveryDetail ?? t("messageSendFailed")}
-              label={deliveryLabel}
-              onCancel={() => onCancelFailed(message)}
-              onRetry={() => onRetryFailed(message)}
-              retryBlocked={retryBlocked}
-            />
-          ) : (
-            isOutgoing &&
-            deliveryLabel && (
-              <p className="mt-1 text-right text-[10px] text-muted">
-                {deliveryLabel}
-              </p>
-            )
-          )}
-        </div>
+        )}
       </div>
       {hasPhotos && (
         <MessagePhotoViewer
@@ -546,6 +621,8 @@ export function MessageThread({
   onOpenAuthor,
   onRetry,
   isContactPanelOpen,
+  isPanelOpen,
+  onToggleContactPanel,
   workspaceId,
 }: {
   canSend: boolean;
@@ -566,10 +643,26 @@ export function MessageThread({
   onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
   onRetry: () => void;
   isContactPanelOpen: boolean;
+  isPanelOpen: boolean;
+  onToggleContactPanel: (trigger: HTMLButtonElement) => void;
   workspaceId: string;
 }) {
   const { t, i18n } = useTranslation("chats");
+  const { t: tChannels } = useTranslation("channels");
   const { user } = useAuth();
+  const failedMessagesStorageKey =
+    user?.id && workspaceId && conversationId
+      ? `neira.chats.failed-messages-hidden:${user.id}:${workspaceId}:${conversationId}`
+      : null;
+  const [storedFailedVisibility, setStoredFailedVisibility] = useState(() => ({
+    storageKey: failedMessagesStorageKey,
+    hidden: readFailedMessagesHidden(failedMessagesStorageKey),
+  }));
+  const failedMessagesHidden =
+    storedFailedVisibility.storageKey === failedMessagesStorageKey
+      ? storedFailedVisibility.hidden
+      : readFailedMessagesHidden(failedMessagesStorageKey);
+  const channelQuery = useChannel(workspaceId, conversation?.channel_id ?? "");
   const retrySend = useRetryMessage(workspaceId, conversationId);
   const retryAll = useRetryAllFailedMessages(workspaceId, conversationId);
   const { cancelOne, cancelAll } = useCancelFailedMessages(
@@ -596,6 +689,19 @@ export function MessageThread({
   const [notificationMenuOpenFor, setNotificationMenuOpenFor] = useState<
     string | null
   >(null);
+  const deliveredMessages = messages.filter(
+    (message) => message.delivery_status !== "failed",
+  );
+  const failedMessages = messages.filter(
+    (message) => message.delivery_status === "failed",
+  );
+  const hasOwnLoadedFailure = failedMessages.some(
+    (message) => message.author_user_id === user?.id,
+  );
+  const displayedMessages = [
+    ...deliveredMessages,
+    ...(failedMessagesHidden ? [] : failedMessages),
+  ];
   const {
     scrollRef,
     olderSentinelRef,
@@ -603,6 +709,7 @@ export function MessageThread({
     hasNewMessage,
     onScroll,
     jumpToBottom,
+    jumpToNewMessage,
   } = useThreadScroll({
     conversationId,
     hasNextPage,
@@ -610,6 +717,8 @@ export function MessageThread({
     isFetchingNextPage,
     messages,
     onLoadMore,
+    visibleMessages: displayedMessages,
+    visibleMessagesHidden: failedMessagesHidden,
   });
   useVisibleMessageRead({
     conversationId,
@@ -637,26 +746,22 @@ export function MessageThread({
     failed: t("deliveryFailed"),
     unknown: t("deliveryUnknown"),
   };
-  const deliveredMessages = messages.filter(
-    (message) => message.delivery_status !== "failed",
+  const channelProvider = channelProviders.find(
+    ({ id }) =>
+      id === (channelQuery.data?.provider ?? conversation?.channel_provider),
   );
-  const failedMessages = messages.filter(
-    (message) => message.delivery_status === "failed",
-  );
-  const hasOwnLoadedFailure = failedMessages.some(
-    (message) => message.author_user_id === user?.id,
-  );
-  const displayedMessages = [...deliveredMessages, ...failedMessages];
-  const profileUrl =
-    conversation?.kind === "external"
-      ? safeExternalUrl(conversation.profile_url)
-      : null;
-  const providerName =
-    conversation?.channel_provider === "telegram_bot"
-      ? t("telegramProvider")
-      : conversation?.channel_provider === "vk_community"
-        ? t("vkProvider")
-        : t("channelProvider");
+  const channelType = channelProvider ? tChannels(channelProvider.label) : null;
+
+  function toggleFailedMessagesHidden() {
+    const hidden = !failedMessagesHidden;
+    setStoredFailedVisibility({ storageKey: failedMessagesStorageKey, hidden });
+    if (!failedMessagesStorageKey) return;
+    try {
+      window.localStorage.setItem(failedMessagesStorageKey, String(hidden));
+    } catch {
+      // The visibility choice still works for this session without storage.
+    }
+  }
 
   async function retryFailed(message: ChatMessage) {
     if (
@@ -808,70 +913,61 @@ export function MessageThread({
         </Link>
         {conversation?.kind === "external" ? (
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <button
-              aria-controls={
-                isContactPanelOpen ? "chat-contact-panel" : undefined
-              }
-              aria-expanded={isContactPanelOpen}
-              aria-label={t("openContactPanel", { name: conversation.title })}
-              className="shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              onClick={(event) =>
-                onOpenContact(
-                  conversation.contact_id,
-                  conversation.primary_external_identity_id,
-                  event.currentTarget,
-                  {
-                    name: conversation.title,
-                    avatarUrl: conversation.avatar_url,
-                  },
-                )
-              }
-              type="button"
-            >
-              <ChatAvatar
-                name={conversation.title}
-                url={conversation.avatar_url}
-              />
-            </button>
+            <ChatAvatarPhoto
+              fallbackAction={{
+                controls: isPanelOpen
+                  ? isContactPanelOpen
+                    ? "chat-contact-panel"
+                    : "chat-author-panel"
+                  : undefined,
+                expanded: isPanelOpen,
+                label: isPanelOpen
+                  ? t("closeSidePanel")
+                  : t("openContactPanel", { name: conversation.title }),
+                onClick: onToggleContactPanel,
+              }}
+              name={conversation.title}
+              url={conversation.avatar_url}
+            />
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-sm font-semibold text-ink sm:text-base">
                 <button
                   aria-controls={
-                    isContactPanelOpen ? "chat-contact-panel" : undefined
+                    isPanelOpen
+                      ? isContactPanelOpen
+                        ? "chat-contact-panel"
+                        : "chat-author-panel"
+                      : undefined
                   }
-                  aria-expanded={isContactPanelOpen}
-                  className="max-w-full cursor-pointer truncate rounded text-left hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                  onClick={(event) =>
-                    onOpenContact(
-                      conversation.contact_id,
-                      conversation.primary_external_identity_id,
-                      event.currentTarget,
-                      {
-                        name: conversation.title,
-                        avatarUrl: conversation.avatar_url,
-                      },
-                    )
-                  }
+                  aria-expanded={isPanelOpen}
+                  className="max-w-full cursor-pointer truncate rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  onClick={(event) => onToggleContactPanel(event.currentTarget)}
                   type="button"
                 >
                   {conversation.title}
                 </button>
               </h2>
-              {profileUrl ? (
-                <a
-                  className="inline-flex max-w-full min-w-0 items-center gap-1 rounded text-xs text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                  href={profileUrl}
-                  rel="noopener noreferrer"
-                  target="_blank"
+              {conversation.channel_id ? (
+                <Link
+                  className="inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  to={channelDetailsPath(conversation.channel_id)}
                 >
+                  {channelProvider && (
+                    <img
+                      alt=""
+                      className="size-4 shrink-0 object-contain"
+                      src={channelProvider.icon}
+                    />
+                  )}
                   <span className="truncate">
-                    {t("openProviderProfile", { provider: providerName })}
+                    {channelQuery.data?.name ?? t("channelDetails")}
                   </span>
-                  <ExternalLink
-                    aria-hidden="true"
-                    className="size-3 shrink-0"
-                  />
-                </a>
+                  {channelType && (
+                    <span className="shrink-0 font-normal">
+                      ({channelType})
+                    </span>
+                  )}
+                </Link>
               ) : (
                 <p className="text-xs text-muted">
                   {t("externalConversation")}
@@ -903,20 +999,47 @@ export function MessageThread({
             trigger={
               <button
                 aria-label={t("notificationSettingsForChat")}
-                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+                className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
                 type="button"
               >
                 <MoreHorizontal aria-hidden="true" className="size-5" />
               </button>
             }
           />
+          {(conversation?.kind === "external" || isPanelOpen) && (
+            <button
+              aria-controls={
+                isPanelOpen
+                  ? isContactPanelOpen
+                    ? "chat-contact-panel"
+                    : "chat-author-panel"
+                  : undefined
+              }
+              aria-expanded={isPanelOpen}
+              aria-label={
+                isPanelOpen
+                  ? t("closeSidePanel")
+                  : t("openContactPanel", { name: conversation?.title ?? "" })
+              }
+              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+              id="chat-panel-toggle"
+              onClick={(event) => onToggleContactPanel(event.currentTarget)}
+              type="button"
+            >
+              {isPanelOpen ? (
+                <PanelRightClose aria-hidden="true" className="size-5" />
+              ) : (
+                <PanelRightOpen aria-hidden="true" className="size-5" />
+              )}
+            </button>
+          )}
         </div>
       </header>
 
       <div className="relative min-h-0 flex-1">
         <div
           aria-label={t("messageHistory")}
-          className="absolute inset-0 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6"
+          className="absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6"
           onScroll={onScroll}
           ref={scrollRef}
           role="log"
@@ -945,7 +1068,7 @@ export function MessageThread({
               {t("emptyMessages")}
             </p>
           ) : (
-            <div className="mx-auto max-w-4xl">
+            <div className="mx-auto flex min-h-full max-w-4xl flex-col justify-end pt-5">
               <div ref={olderSentinelRef} />
               {isFetchingNextPage && (
                 <p
@@ -973,84 +1096,114 @@ export function MessageThread({
               )}
               <Tooltip.Provider delayDuration={250} skipDelayDuration={150}>
                 <ol className="space-y-3">
-                  {displayedMessages.map((message, index) => {
-                    const isFailed = index >= deliveredMessages.length;
-                    const day = new Date(message.occurred_at).toDateString();
-                    const previousMessage = displayedMessages[index - 1];
-                    const previousDay = previousMessage
-                      ? new Date(previousMessage.occurred_at).toDateString()
-                      : null;
-                    const showDay = !isFailed && day !== previousDay;
-                    return (
-                      <FragmentWithDay
-                        canManageFailure={
-                          canSend && message.author_user_id === user?.id
-                        }
-                        canManageFailedSection={canSend && Boolean(user)}
-                        actionsBusy={
-                          bulkAction !== null ||
-                          retryingId !== null ||
-                          cancellingId !== null
-                        }
-                        bulkProgressText={
-                          isFailed && index === deliveredMessages.length
-                            ? bulkAction === "retry" && bulkProgress
-                              ? t(
-                                  "retryAllFailedMessagesProgress",
-                                  bulkProgress,
-                                )
-                              : null
-                            : null
-                        }
-                        bulkError={bulkError}
-                        bulkNotice={hasOwnLoadedFailure ? null : bulkNotice}
-                        date={
-                          showDay
-                            ? dayFormat.format(new Date(message.occurred_at))
-                            : null
-                        }
-                        failedSectionTitle={
-                          isFailed && index === deliveredMessages.length
-                            ? t("failedMessagesSection")
-                            : null
-                        }
-                        failedTimeFormat={failedTimeFormat}
-                        key={message.id}
-                        message={message}
-                        workspaceId={workspaceId}
-                        deliveryStatusText={deliveryStatusText}
-                        onRetryFailed={(failedMessage) => {
-                          void retryFailed(failedMessage);
-                        }}
-                        onCancelFailed={(failedMessage) => {
-                          void cancelFailed(failedMessage);
-                        }}
-                        onRetryAllFailed={() => {
-                          void retryAllFailed();
-                        }}
-                        onCancelAllFailed={() => {
-                          void cancelAllFailed();
-                        }}
-                        onOpenContact={onOpenContact}
-                        onOpenAuthor={onOpenAuthor}
-                        retryError={
-                          retryError?.messageId === message.id
-                            ? retryError.text
-                            : null
-                        }
-                        retryBlocked={
-                          uncertainRetryIds.has(message.id) ||
-                          (retryError?.messageId === message.id &&
-                            retryError.blocked)
-                        }
-                        retrying={retryingId === message.id}
-                        cancelling={cancellingId === message.id}
-                        timeFormat={timeFormat}
-                        unsupportedMessage={t("unsupportedMessage")}
-                        unknownParticipant={t("unknownParticipant")}
-                      />
-                    );
-                  })}
+                  {groupMessagesForDisplay(displayedMessages).map((group) => (
+                    <li className="relative" key={`${group.kind}:${group.key}`}>
+                      {group.kind === "day" && (
+                        <div className="sticky top-0 z-10 mb-3 flex justify-center bg-page py-2">
+                          <span className="rounded-full border border-line bg-surface/95 px-3 py-1 text-xs font-medium text-muted-strong shadow-sm backdrop-blur-sm">
+                            {dayFormat.format(
+                              new Date(group.messages[0].occurred_at),
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      <ol className="space-y-3">
+                        {group.messages.map((message, index) => (
+                          <MessageWithFailedSection
+                            canManageFailure={
+                              canSend && message.author_user_id === user?.id
+                            }
+                            canManageFailedSection={canSend && Boolean(user)}
+                            actionsBusy={
+                              bulkAction !== null ||
+                              retryingId !== null ||
+                              cancellingId !== null
+                            }
+                            bulkProgressText={
+                              group.kind === "failed" && index === 0
+                                ? bulkAction === "retry" && bulkProgress
+                                  ? t(
+                                      "retryAllFailedMessagesProgress",
+                                      bulkProgress,
+                                    )
+                                  : null
+                                : null
+                            }
+                            bulkError={bulkError}
+                            bulkNotice={hasOwnLoadedFailure ? null : bulkNotice}
+                            failedSectionTitle={
+                              group.kind === "failed" && index === 0
+                                ? t("failedMessagesSection")
+                                : null
+                            }
+                            failedMessagesHidden={failedMessagesHidden}
+                            failedTimeFormat={failedTimeFormat}
+                            key={message.id}
+                            message={message}
+                            workspaceId={workspaceId}
+                            deliveryStatusText={deliveryStatusText}
+                            onRetryFailed={(failedMessage) => {
+                              void retryFailed(failedMessage);
+                            }}
+                            onCancelFailed={(failedMessage) => {
+                              void cancelFailed(failedMessage);
+                            }}
+                            onRetryAllFailed={() => {
+                              void retryAllFailed();
+                            }}
+                            onCancelAllFailed={() => {
+                              void cancelAllFailed();
+                            }}
+                            onToggleFailedMessagesHidden={
+                              toggleFailedMessagesHidden
+                            }
+                            onOpenContact={onOpenContact}
+                            onOpenAuthor={onOpenAuthor}
+                            retryError={
+                              retryError?.messageId === message.id
+                                ? retryError.text
+                                : null
+                            }
+                            retryBlocked={
+                              uncertainRetryIds.has(message.id) ||
+                              (retryError?.messageId === message.id &&
+                                retryError.blocked)
+                            }
+                            retrying={retryingId === message.id}
+                            cancelling={cancellingId === message.id}
+                            timeFormat={timeFormat}
+                            unsupportedMessage={t("unsupportedMessage")}
+                            unknownParticipant={t("unknownParticipant")}
+                          />
+                        ))}
+                      </ol>
+                    </li>
+                  ))}
+                  {failedMessagesHidden && failedMessages.length > 0 && (
+                    <FailedMessagesBadge
+                      busy={
+                        bulkAction !== null ||
+                        retryingId !== null ||
+                        cancellingId !== null
+                      }
+                      canManage={canSend && Boolean(user)}
+                      error={bulkError}
+                      hidden
+                      notice={hasOwnLoadedFailure ? null : bulkNotice}
+                      progress={
+                        bulkAction === "retry" && bulkProgress
+                          ? t("retryAllFailedMessagesProgress", bulkProgress)
+                          : null
+                      }
+                      onCancelAll={() => {
+                        void cancelAllFailed();
+                      }}
+                      onRetryAll={() => {
+                        void retryAllFailed();
+                      }}
+                      onToggleHidden={toggleFailedMessagesHidden}
+                    />
+                  )}
                 </ol>
               </Tooltip.Provider>
             </div>
@@ -1061,8 +1214,8 @@ export function MessageThread({
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex flex-col items-center gap-2">
             {hasNewMessage && (
               <button
-                className="pointer-events-auto rounded-full bg-brand-fill px-4 py-2 text-xs font-semibold text-on-brand shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                onClick={jumpToBottom}
+                className="pointer-events-auto cursor-pointer rounded-full bg-brand-fill px-4 py-2 text-xs font-semibold text-on-brand shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                onClick={jumpToNewMessage}
                 type="button"
               >
                 {t("newMessagePill")}
@@ -1071,7 +1224,7 @@ export function MessageThread({
             {!isAtBottom && (
               <button
                 aria-label={t("jumpToBottom")}
-                className="pointer-events-auto grid size-9 place-items-center rounded-full border border-line bg-surface text-ink shadow-md hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="pointer-events-auto grid size-9 cursor-pointer place-items-center rounded-full border border-line bg-surface text-ink shadow-md hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 onClick={jumpToBottom}
                 type="button"
               >
@@ -1097,15 +1250,15 @@ export function MessageThread({
   );
 }
 
-function FragmentWithDay({
+function MessageWithFailedSection({
   canManageFailure,
   canManageFailedSection,
   actionsBusy,
   bulkProgressText,
   bulkError,
   bulkNotice,
-  date,
   failedSectionTitle,
+  failedMessagesHidden,
   failedTimeFormat,
   message,
   workspaceId,
@@ -1116,6 +1269,7 @@ function FragmentWithDay({
   onCancelFailed,
   onRetryAllFailed,
   onCancelAllFailed,
+  onToggleFailedMessagesHidden,
   onOpenContact,
   onOpenAuthor,
   retryError,
@@ -1130,8 +1284,8 @@ function FragmentWithDay({
   bulkProgressText: string | null;
   bulkError: string | null;
   bulkNotice: string | null;
-  date: string | null;
   failedSectionTitle: string | null;
+  failedMessagesHidden: boolean;
   failedTimeFormat: Intl.DateTimeFormat;
   message: ChatMessage;
   workspaceId: string;
@@ -1142,6 +1296,7 @@ function FragmentWithDay({
   onCancelFailed: (message: ChatMessage) => void;
   onRetryAllFailed: () => void;
   onCancelAllFailed: () => void;
+  onToggleFailedMessagesHidden: () => void;
   onOpenContact: (
     contactId: string | null,
     identityId: string | null,
@@ -1157,22 +1312,17 @@ function FragmentWithDay({
 }) {
   return (
     <>
-      {date && (
-        <li className="flex justify-center py-2">
-          <span className="rounded-full bg-subtle px-3 py-1 text-xs text-muted">
-            {date}
-          </span>
-        </li>
-      )}
       {failedSectionTitle && (
         <FailedMessagesBadge
           busy={actionsBusy}
           canManage={canManageFailedSection}
           error={bulkError}
+          hidden={failedMessagesHidden}
           notice={bulkNotice}
           progress={bulkProgressText}
           onCancelAll={onCancelAllFailed}
           onRetryAll={onRetryAllFailed}
+          onToggleHidden={onToggleFailedMessagesHidden}
         />
       )}
       <MessageRow
