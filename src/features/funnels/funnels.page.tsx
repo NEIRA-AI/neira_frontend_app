@@ -6,9 +6,11 @@ import { useAuth } from "@/features/auth";
 import { Button } from "@/shared/ui/button";
 
 import type { StatusRead } from "./api/funnels-api";
+import type { InquirySummary } from "./api/inquiries-api";
 import { useListFunnelInquiries } from "./model/use-list-funnel-inquiries";
 import { useListFunnels } from "./model/use-list-funnels";
 import { useMakeEntryStatus } from "./model/use-make-entry-status";
+import { useMoveInquiry } from "./model/use-move-inquiry";
 import { useReorderStatuses } from "./model/use-reorder-statuses";
 import { DeleteFunnelDialog } from "./ui/delete-funnel-dialog";
 import { DeleteStatusDialog } from "./ui/delete-status-dialog";
@@ -32,12 +34,18 @@ function FunnelsPage() {
     (workspace) => workspace.id === workspaceId,
   );
   const canEdit = selectedWorkspace?.role === "owner";
+  const canMoveInquiries =
+    canEdit ||
+    selectedWorkspace?.role === "admin" ||
+    selectedWorkspace?.role === "manager";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ActiveDialog>(null);
   const [actionError, setActionError] = useState(false);
+  const [moveError, setMoveError] = useState(false);
   const funnelsQuery = useListFunnels(workspaceId ?? "");
   const makeEntry = useMakeEntryStatus(workspaceId ?? "");
   const reorder = useReorderStatuses(workspaceId ?? "");
+  const moveInquiry = useMoveInquiry(workspaceId ?? "");
   const funnels = funnelsQuery.data ?? [];
   const funnel = funnels.find((item) => item.id === selectedId) ?? funnels[0];
   const inquiriesQuery = useListFunnelInquiries(
@@ -48,10 +56,12 @@ function FunnelsPage() {
   const inquiries = inquiryPages.flatMap((page) => page.items);
   const inquiryCounts = inquiryPages[0]?.status_counts ?? null;
   const actionBusy = makeEntry.isPending || reorder.isPending;
+  const boardBusy = actionBusy || moveInquiry.isPending;
 
   function selectFunnel(id: string) {
     setSelectedId(id);
     setActionError(false);
+    setMoveError(false);
     setDialog(null);
   }
 
@@ -72,6 +82,30 @@ function FunnelsPage() {
       await reorder.mutateAsync({ funnelId: funnel.id, statusIds: ids });
     } catch {
       setActionError(true);
+    }
+  }
+
+  async function moveInquiryToStatus(
+    inquiry: InquirySummary,
+    status: StatusRead,
+  ) {
+    if (
+      !funnel ||
+      !canMoveInquiries ||
+      boardBusy ||
+      inquiry.status_id === status.id
+    )
+      return;
+    setMoveError(false);
+    try {
+      await moveInquiry.mutateAsync({
+        funnelId: funnel.id,
+        inquiryId: inquiry.id,
+        statusId: status.id,
+        statusName: status.name,
+      });
+    } catch {
+      setMoveError(true);
     }
   }
 
@@ -135,6 +169,14 @@ function FunnelsPage() {
               {reorder.isError ? t("reorderError") : t("actionError")}
             </p>
           )}
+          {moveError && (
+            <p
+              className="mx-4 mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger sm:mx-6 lg:mx-8"
+              role="alert"
+            >
+              {t("moveInquiryError")}
+            </p>
+          )}
           {inquiriesQuery.isError && (
             <div className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger sm:mx-6 lg:mx-8">
               <p role="alert">{t("inquiriesLoadError")}</p>
@@ -149,8 +191,9 @@ function FunnelsPage() {
             </div>
           )}
           <FunnelBoard
-            busy={actionBusy}
+            busy={boardBusy}
             canEdit={canEdit}
+            canMoveInquiries={canMoveInquiries}
             hasMoreInquiries={Boolean(inquiriesQuery.hasNextPage)}
             inquiries={inquiries}
             inquiryCounts={inquiryCounts}
@@ -163,6 +206,9 @@ function FunnelsPage() {
             onDelete={(status) => setDialog({ kind: "deleteStatus", status })}
             onEdit={(status) => setDialog({ kind: "editStatus", status })}
             onMakeEntry={(status) => void changeEntry(status)}
+            onMoveInquiry={(inquiry, status) =>
+              void moveInquiryToStatus(inquiry, status)
+            }
             onReorder={(ids) => void reorderStatuses(ids)}
             statuses={funnel.statuses}
           />

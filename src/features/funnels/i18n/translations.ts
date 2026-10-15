@@ -22,6 +22,9 @@ const ru = {
   moveStatus: "Переместить статус «{{name}}»",
   dragHelp:
     "Перетащите за заголовок колонки или используйте пробел и стрелки для изменения порядка.",
+  dragInquiryHelp: "Перетащите обращение за значок на карточке в нужный этап.",
+  moveInquiry: "Переместить обращение контакта «{{name}}»",
+  moveInquiryError: "Не удалось переместить обращение. Попробуйте ещё раз.",
   emptyColumn: "Пока нет обращений",
   emptyColumnHelp: "Когда появятся обращения, они будут видны здесь.",
   moreInquiriesInColumn:
@@ -118,6 +121,9 @@ const en = {
   moveStatus: "Move status “{{name}}”",
   dragHelp:
     "Drag a column header or use Space and arrow keys to change the order.",
+  dragInquiryHelp: "Drag a card by its handle into another stage.",
+  moveInquiry: "Move inquiry for contact “{{name}}”",
+  moveInquiryError: "Could not move the inquiry. Please try again.",
   emptyColumn: "No conversations yet",
   emptyColumnHelp: "Conversations will appear here when they arrive.",
   moreInquiriesInColumn: "Load more inquiries to see this stage’s cards.",

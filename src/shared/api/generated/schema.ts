@@ -983,6 +983,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/inquiries/{inquiry_id}/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Inquiry Status */
+    patch: operations["update_inquiry_status_api_v1_inquiries__inquiry_id__status_patch"];
+    trace?: never;
+  };
   "/api/v1/conversations": {
     parameters: {
       query?: never;
@@ -2206,6 +2223,14 @@ export interface components {
       status_counts: {
         [key: string]: number;
       };
+    };
+    /** InquiryStatusUpdate */
+    InquiryStatusUpdate: {
+      /**
+       * Status Id
+       * Format: uuid
+       */
+      status_id: string;
     };
     /** InquirySummary */
     InquirySummary: {
@@ -4905,6 +4930,43 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["InquiryPage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_inquiry_status_api_v1_inquiries__inquiry_id__status_patch: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        inquiry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InquiryStatusUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InquirySummary"];
         };
       };
       /** @description Validation Error */

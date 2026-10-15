@@ -1,4 +1,9 @@
-import { DragDropProvider, KeyboardSensor } from "@dnd-kit/react";
+import {
+  DragDropProvider,
+  KeyboardSensor,
+  useDraggable,
+  useDroppable,
+} from "@dnd-kit/react";
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -8,6 +13,7 @@ import {
   ChevronRight,
   CircleDot,
   CircleHelp,
+  GripVertical,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -39,6 +45,8 @@ type BoardProps = {
   onDelete: (status: StatusRead) => void;
   onMakeEntry: (status: StatusRead) => void;
   onReorder: (ids: string[]) => void;
+  canMoveInquiries: boolean;
+  onMoveInquiry: (inquiry: InquirySummary, status: StatusRead) => void;
 };
 
 function statusColorStyle(status: StatusRead): CSSProperties {
@@ -120,6 +128,7 @@ type ColumnProps = {
   inquiriesFailed: boolean;
   hasMoreInquiries: boolean;
   canEdit: boolean;
+  canMoveInquiries: boolean;
   busy: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -161,32 +170,62 @@ function ColumnHint({
   );
 }
 
-function InquiryCard({ inquiry }: { inquiry: InquirySummary }) {
+function InquiryCard({
+  inquiry,
+  canMove,
+  busy,
+}: {
+  inquiry: InquirySummary;
+  canMove: boolean;
+  busy: boolean;
+}) {
   const { t } = useTranslation("funnels");
   const contactName = inquiry.contact_name.trim() || t("unnamedContact");
+  const { ref, handleRef, isDragging } = useDraggable({
+    id: `inquiry:${inquiry.id}`,
+    type: "inquiry",
+    data: { statusId: inquiry.status_id },
+    disabled: !canMove || busy,
+  });
 
   return (
-    <Link
-      className="block rounded-xl border border-line bg-surface p-3 text-ink shadow-sm transition-colors hover:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
-      to={contactDetailsPath(inquiry.contact_id)}
+    <div
+      className={`relative rounded-xl border border-line bg-surface text-ink shadow-sm transition-colors hover:border-brand focus-within:border-brand motion-reduce:transition-none ${isDragging ? "opacity-50" : ""}`}
+      ref={ref}
     >
-      <div className="flex min-w-0 items-start gap-2.5">
-        <span
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
-        >
-          {Array.from(contactName)[0]?.toUpperCase() ?? "?"}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold" title={contactName}>
-            {contactName}
-          </p>
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
-            {inquiry.last_message_text?.trim() || t("noMessage")}
-          </p>
+      <Link
+        className={`block rounded-xl p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${canMove ? "pr-9" : ""}`}
+        to={contactDetailsPath(inquiry.contact_id)}
+      >
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
+          >
+            {Array.from(contactName)[0]?.toUpperCase() ?? "?"}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold" title={contactName}>
+              {contactName}
+            </p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
+              {inquiry.last_message_text?.trim() || t("noMessage")}
+            </p>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+      {canMove && (
+        <button
+          aria-label={t("moveInquiry", { name: contactName })}
+          className="absolute top-2 right-1.5 flex size-7 cursor-grab touch-none items-center justify-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+          disabled={busy}
+          ref={handleRef}
+          type="button"
+        >
+          <GripVertical aria-hidden="true" className="size-4" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -199,6 +238,7 @@ function StatusColumn({
   inquiriesFailed,
   hasMoreInquiries,
   canEdit,
+  canMoveInquiries,
   busy,
   onEdit,
   onDelete,
@@ -215,6 +255,12 @@ function StatusColumn({
 }) {
   const { t } = useTranslation("funnels");
   const draggable = canEdit && !status.is_entry && !busy;
+  const { ref: inquiryDropRef, isDropTarget: isInquiryDropTarget } =
+    useDroppable({
+      id: `status-drop:${status.id}`,
+      accept: "inquiry",
+      disabled: !canMoveInquiries || busy,
+    });
 
   return (
     <section
@@ -269,9 +315,17 @@ function StatusColumn({
           )}
         </div>
       </header>
-      <div className="min-h-0 flex-1 space-y-2 px-2 pt-5">
+      <div
+        className={`min-h-0 flex-1 space-y-2 rounded-xl px-2 pt-5 transition-colors motion-reduce:transition-none ${isInquiryDropTarget ? "bg-[var(--column-soft)]" : ""}`}
+        ref={inquiryDropRef}
+      >
         {inquiries.map((inquiry) => (
-          <InquiryCard inquiry={inquiry} key={inquiry.id} />
+          <InquiryCard
+            busy={busy}
+            canMove={canMoveInquiries}
+            inquiry={inquiry}
+            key={inquiry.id}
+          />
         ))}
         {inquiries.length === 0 && (
           <p className="text-center text-xs leading-5 text-muted">
@@ -306,6 +360,9 @@ function SortableStatusColumn({
   const { ref, handleRef, isDragging, isDropTarget } = useSortable({
     id: props.status.id,
     index,
+    type: "status",
+    accept: "status",
+    group: "funnel-statuses",
     disabled: !props.canEdit || props.busy,
   });
   return (
@@ -334,6 +391,8 @@ export function FunnelBoard({
   onDelete,
   onMakeEntry,
   onReorder,
+  canMoveInquiries,
+  onMoveInquiry,
 }: BoardProps) {
   const { t } = useTranslation("funnels");
   const scrollId = useId();
@@ -425,22 +484,38 @@ export function FunnelBoard({
         <div aria-hidden="true" className="shrink-0 px-4 sm:px-6 lg:px-8">
           <div className="border-t border-line" />
         </div>
-        {canEdit && others.length > 1 && (
-          <p className="shrink-0 px-4 pt-4 text-xs text-muted sm:px-6 lg:px-8">
-            {t("dragHelp")}
-          </p>
-        )}
+        {(canEdit && others.length > 1) ||
+        (canMoveInquiries && inquiries.length > 0) ? (
+          <div className="shrink-0 space-y-1 px-4 pt-4 text-xs text-muted sm:px-6 lg:px-8">
+            {canEdit && others.length > 1 && <p>{t("dragHelp")}</p>}
+            {canMoveInquiries && inquiries.length > 0 && (
+              <p>{t("dragInquiryHelp")}</p>
+            )}
+          </div>
+        ) : null}
         <DragDropProvider
           sensors={(defaults) => [
             ...defaults.filter((sensor) => sensor !== KeyboardSensor),
             KeyboardSensor.configure({ offset: { x: 312, y: 0 } }),
           ]}
           onDragEnd={(event) => {
-            if (event.canceled || !isSortable(event.operation.source)) return;
-            finishDrag(
-              event.operation.source.initialIndex,
-              event.operation.source.index,
-            );
+            if (event.canceled) return;
+            const { source, target } = event.operation;
+            if (source?.type === "inquiry") {
+              if (!canMoveInquiries || busy) return;
+              const inquiry = inquiries.find(
+                (item) => `inquiry:${item.id}` === source.id,
+              );
+              const status = statuses.find(
+                (item) => `status-drop:${item.id}` === target?.id,
+              );
+              if (inquiry && status && inquiry.status_id !== status.id) {
+                onMoveInquiry(inquiry, status);
+              }
+              return;
+            }
+            if (!isSortable(source)) return;
+            finishDrag(source.initialIndex, source.index);
           }}
         >
           <div
@@ -458,6 +533,7 @@ export function FunnelBoard({
                 <StatusColumn
                   busy={busy}
                   canEdit={canEdit}
+                  canMoveInquiries={canMoveInquiries}
                   inquiries={columnInquiries(entry.id)}
                   inquiryCount={columnCount(entry.id)}
                   inquiriesLoading={inquiriesLoading}
@@ -474,6 +550,7 @@ export function FunnelBoard({
                 <SortableStatusColumn
                   busy={busy}
                   canEdit={canEdit}
+                  canMoveInquiries={canMoveInquiries}
                   inquiries={columnInquiries(status.id)}
                   inquiryCount={columnCount(status.id)}
                   inquiriesLoading={inquiriesLoading}
