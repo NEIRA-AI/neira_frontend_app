@@ -5,6 +5,7 @@ import { api } from "./client";
 declare module "axios" {
   interface AxiosRequestConfig {
     workspace?: boolean;
+    workspaceScopeId?: string;
     skipAuthRefresh?: boolean;
     identitySwitchRequest?: boolean;
   }
@@ -191,8 +192,9 @@ export function installAuthInterceptors(refresh: () => Promise<string>): void {
         config.headers.delete("Authorization");
       }
       if (config.workspace && !config._retry) {
-        if (!workspaceId) throw new Error("Workspace is not selected");
-        config.headers.set("X-Neira-Workspace-Id", workspaceId);
+        const requestWorkspaceId = config.workspaceScopeId ?? workspaceId;
+        if (!requestWorkspaceId) throw new Error("Workspace is not selected");
+        config.headers.set("X-Neira-Workspace-Id", requestWorkspaceId);
       }
       return config;
     },

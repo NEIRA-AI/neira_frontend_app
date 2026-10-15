@@ -2,8 +2,15 @@ import {
   EventStreamContentType,
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PropsWithChildren,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth";
@@ -21,8 +28,13 @@ import {
   messageRevisionsQueryKey,
   messagesQueryKey,
   messagePreview,
+  listConversationNotificationSettings,
+  notificationSettingsQueryKey,
   unreadChatCountQueryKey,
+  updateConversationNotificationSettings,
   type Conversation,
+  type ConversationNotificationSettings,
+  type ConversationNotificationSettingsPage,
 } from "../api/conversations-api";
 import {
   conversationStreamUrl,
@@ -31,9 +43,17 @@ import {
 } from "../api/conversation-stream";
 import { MessageToast, type ChatToast } from "../ui/message-toast";
 
-import { ChatNotificationContext } from "./chat-notification-context";
+import {
+  ChatNotificationContext,
+  type ChatNotificationSettings,
+} from "./chat-notification-context";
 
-const soundStorageKey = "neira.chat-sound-enabled";
+const defaultSettings: ChatNotificationSettings = {
+  soundEnabled: true,
+  notificationsEnabled: true,
+};
+const settingsScope = (workspaceId: string, userId: string) =>
+  `${workspaceId}:${userId}`;
 const messageSoundUrls = [
   "/sounds/message-notification.mp3",
   "/sounds/message-notification.ogg",
@@ -41,14 +61,6 @@ const messageSoundUrls = [
 const maxRetryDelayMs = 30_000;
 
 class RetryConversationStream extends Error {}
-
-function initialSoundEnabled() {
-  try {
-    return window.localStorage.getItem(soundStorageKey) !== "false";
-  } catch {
-    return true;
-  }
-}
 
 function retryDelay(attempt: number): number {
   const base = Math.min(maxRetryDelayMs, 3_000 * 2 ** Math.min(attempt, 4));
@@ -130,15 +142,198 @@ function parseEvent(
   }
 }
 
+function parseSettingsEvent(
+  data: string,
+): ConversationNotificationSettings | null {
+  try {
+    const value: unknown = JSON.parse(data);
+    if (!value || typeof value !== "object") return null;
+    const event = value as Record<string, unknown>;
+    if (
+      typeof event.conversation_id !== "string" ||
+      typeof event.sound_enabled !== "boolean" ||
+      typeof event.notifications_enabled !== "boolean"
+    )
+      return null;
+    return {
+      conversation_id: event.conversation_id,
+      sound_enabled: event.sound_enabled,
+      notifications_enabled: event.notifications_enabled,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function replaceSettings(
+  current: ConversationNotificationSettingsPage | undefined,
+  updated: ConversationNotificationSettings,
+): ConversationNotificationSettingsPage {
+  return {
+    items: [
+      ...(current?.items.filter(
+        (item) => item.conversation_id !== updated.conversation_id,
+      ) ?? []),
+      updated,
+    ],
+  };
+}
+
 export function ChatNotifications({ children }: PropsWithChildren) {
   const { t } = useTranslation("chats");
   const { status, user, workspaceId } = useAuth();
   const queryClient = useQueryClient();
-  const [soundEnabled, setSoundEnabled] = useState(initialSoundEnabled);
-  const soundEnabledRef = useRef(soundEnabled);
   const [toasts, setToasts] = useState<ChatToast[]>([]);
+  const [settingsRefreshingFor, setSettingsRefreshingFor] = useState<
+    string | null
+  >(null);
+  const [settingsRefreshFailedFor, setSettingsRefreshFailedFor] = useState<
+    string | null
+  >(null);
+  const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
+  const savingIdsRef = useRef(new Set<string>());
+  const settingsSignalVersions = useRef(new Map<string, number>());
+  const settingsRefreshesRef = useRef(
+    new Map<string, Promise<ConversationNotificationSettingsPage>>(),
+  );
+  const failedSettingsRefreshesRef = useRef(new Set<string>());
   const timers = useRef(new Set<number>());
   const userId = status === "authenticated" ? user?.id : null;
+  const settingsKey = notificationSettingsQueryKey(
+    workspaceId ?? "",
+    userId ?? "",
+  );
+  const settingsQuery = useQuery({
+    queryKey: settingsKey,
+    queryFn: () => listConversationNotificationSettings(workspaceId!),
+    enabled: Boolean(userId && workspaceId),
+  });
+  const refreshSettings = useCallback(
+    (activeWorkspaceId: string, activeUserId: string) => {
+      const scope = settingsScope(activeWorkspaceId, activeUserId);
+      const queryKey = notificationSettingsQueryKey(
+        activeWorkspaceId,
+        activeUserId,
+      );
+      const pending = queryClient
+        .cancelQueries({ queryKey, exact: true })
+        .then(() =>
+          queryClient.fetchQuery({
+            queryKey,
+            queryFn: () =>
+              listConversationNotificationSettings(activeWorkspaceId),
+            retry: false,
+            staleTime: 0,
+          }),
+        );
+      settingsRefreshesRef.current.set(scope, pending);
+      failedSettingsRefreshesRef.current.delete(scope);
+      setSettingsRefreshingFor(scope);
+      setSettingsRefreshFailedFor((current) =>
+        current === scope ? null : current,
+      );
+      void pending.then(
+        () => {
+          if (settingsRefreshesRef.current.get(scope) === pending) {
+            settingsRefreshesRef.current.delete(scope);
+            failedSettingsRefreshesRef.current.delete(scope);
+            setSettingsRefreshingFor((current) =>
+              current === scope ? null : current,
+            );
+          }
+        },
+        () => {
+          if (settingsRefreshesRef.current.get(scope) === pending) {
+            settingsRefreshesRef.current.delete(scope);
+            failedSettingsRefreshesRef.current.add(scope);
+            setSettingsRefreshingFor((current) =>
+              current === scope ? null : current,
+            );
+            setSettingsRefreshFailedFor(scope);
+          }
+        },
+      );
+      return pending;
+    },
+    [queryClient],
+  );
+  const settingsByConversation = useMemo(
+    () =>
+      new Map(
+        settingsQuery.data?.items.map((item) => [item.conversation_id, item]),
+      ),
+    [settingsQuery.data],
+  );
+  const getSettings = useCallback(
+    (conversationId: string): ChatNotificationSettings => {
+      const settings = settingsByConversation.get(conversationId);
+      return settings
+        ? {
+            soundEnabled: settings.sound_enabled,
+            notificationsEnabled: settings.notifications_enabled,
+          }
+        : defaultSettings;
+    },
+    [settingsByConversation],
+  );
+  const isSaving = useCallback(
+    (conversationId: string) => savingIds.has(conversationId),
+    [savingIds],
+  );
+  const updateSettings = useCallback(
+    async (
+      conversationId: string,
+      patch: Partial<ChatNotificationSettings>,
+    ) => {
+      if (!workspaceId || !userId || savingIdsRef.current.has(conversationId))
+        return;
+      const signalKey = `${workspaceId}:${userId}:${conversationId}`;
+      const signalVersion = settingsSignalVersions.current.get(signalKey) ?? 0;
+      savingIdsRef.current.add(conversationId);
+      setSavingIds(new Set(savingIdsRef.current));
+      try {
+        const updated = await updateConversationNotificationSettings(
+          workspaceId,
+          conversationId,
+          patch,
+        );
+        if (!updated.notifications_enabled) {
+          setToasts((current) =>
+            current.filter((item) => item.conversationId !== conversationId),
+          );
+        }
+        let effective = updated;
+        try {
+          const page = await refreshSettings(workspaceId, userId);
+          effective =
+            page.items.find(
+              (item) => item.conversation_id === conversationId,
+            ) ?? updated;
+        } catch {
+          // PATCH succeeded even if the follow-up read failed. Show its saved
+          // result locally and keep the alert barrier until a fresh read works.
+          if (
+            (settingsSignalVersions.current.get(signalKey) ?? 0) ===
+            signalVersion
+          ) {
+            queryClient.setQueryData<ConversationNotificationSettingsPage>(
+              notificationSettingsQueryKey(workspaceId, userId),
+              (current) => replaceSettings(current, updated),
+            );
+          }
+        }
+        if (!effective.notifications_enabled) {
+          setToasts((current) =>
+            current.filter((item) => item.conversationId !== conversationId),
+          );
+        }
+      } finally {
+        savingIdsRef.current.delete(conversationId);
+        setSavingIds(new Set(savingIdsRef.current));
+      }
+    },
+    [queryClient, refreshSettings, userId, workspaceId],
+  );
 
   useEffect(() => {
     // Browsers require a user gesture before sound can play. Prepare the
@@ -154,21 +349,14 @@ export function ChatNotifications({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    soundEnabledRef.current = soundEnabled;
-    try {
-      window.localStorage.setItem(soundStorageKey, String(soundEnabled));
-    } catch {
-      // The in-memory preference still works without storage.
-    }
-  }, [soundEnabled]);
-
-  useEffect(() => {
     const activeWorkspaceId = workspaceId;
     if (!userId || !activeWorkspaceId) return;
 
     const controller = new AbortController();
     const received = new Set<string>();
     const activeTimers = timers.current;
+    const activeRefreshes = settingsRefreshesRef.current;
+    const activeFailedRefreshes = failedSettingsRefreshesRef.current;
     let active = true;
     let retryAttempt = 0;
     let connectedAt = 0;
@@ -275,6 +463,35 @@ export function ChatNotifications({ children }: PropsWithChildren) {
           if (!active) return;
           invalidateContactInquiries(conversation);
           if (message.direction !== "inbound") return;
+          const scope = settingsScope(activeWorkspaceId!, userId!);
+          const queryKey = notificationSettingsQueryKey(
+            activeWorkspaceId!,
+            userId!,
+          );
+          const refresh = settingsRefreshesRef.current.get(scope);
+          let settings = refresh
+            ? await refresh
+            : failedSettingsRefreshesRef.current.has(scope) ||
+                queryClient.getQueryState(queryKey)?.status === "error"
+              ? await refreshSettings(activeWorkspaceId!, userId!)
+              : await queryClient.ensureQueryData({
+                  queryKey,
+                  queryFn: () =>
+                    listConversationNotificationSettings(activeWorkspaceId!),
+                });
+          const newerRefresh = settingsRefreshesRef.current.get(scope);
+          if (newerRefresh && newerRefresh !== refresh) {
+            settings = await newerRefresh;
+          }
+          settings =
+            queryClient.getQueryData<ConversationNotificationSettingsPage>(
+              queryKey,
+            ) ?? settings;
+          if (!active) return;
+          const preference = settings.items.find(
+            (item) => item.conversation_id === conversationId,
+          );
+          if (preference?.notifications_enabled === false) return;
           const toast: ChatToast = {
             id: message.id,
             conversationId,
@@ -291,7 +508,7 @@ export function ChatNotifications({ children }: PropsWithChildren) {
               -3,
             ),
           );
-          if (soundEnabledRef.current) void playMessageSound();
+          if (preference?.sound_enabled !== false) void playMessageSound();
           const timer = window.setTimeout(() => {
             activeTimers.delete(timer);
             setToasts((current) =>
@@ -339,8 +556,38 @@ export function ChatNotifications({ children }: PropsWithChildren) {
         connectedAt = Date.now();
       },
       onmessage(event) {
+        if (!active) return;
         if (event.event === "connected") {
           invalidateConversation();
+          void refreshSettings(activeWorkspaceId!, userId!).catch(() => {});
+          return;
+        }
+        if (event.event === "notification-settings") {
+          const settings = parseSettingsEvent(event.data);
+          if (!settings) return;
+          const signalKey = `${activeWorkspaceId}:${userId}:${settings.conversation_id}`;
+          settingsSignalVersions.current.set(
+            signalKey,
+            (settingsSignalVersions.current.get(signalKey) ?? 0) + 1,
+          );
+          // Publication order can differ from commit order across concurrent
+          // updates. Read the committed state instead of trusting a late SSE.
+          void refreshSettings(activeWorkspaceId!, userId!).then(
+            (page) => {
+              if (!active) return;
+              const disabled = new Set(
+                page.items
+                  .filter((item) => !item.notifications_enabled)
+                  .map((item) => item.conversation_id),
+              );
+              if (disabled.size > 0) {
+                setToasts((toasts) =>
+                  toasts.filter((item) => !disabled.has(item.conversationId)),
+                );
+              }
+            },
+            () => {},
+          );
           return;
         }
         if (event.event === "profile") {
@@ -394,11 +641,25 @@ export function ChatNotifications({ children }: PropsWithChildren) {
       setToasts([]);
       activeTimers.forEach((timer) => window.clearTimeout(timer));
       activeTimers.clear();
+      activeRefreshes.delete(settingsScope(activeWorkspaceId!, userId!));
+      activeFailedRefreshes.delete(settingsScope(activeWorkspaceId!, userId!));
     };
-  }, [queryClient, t, userId, workspaceId]);
+  }, [queryClient, refreshSettings, t, userId, workspaceId]);
 
   return (
-    <ChatNotificationContext.Provider value={{ soundEnabled, setSoundEnabled }}>
+    <ChatNotificationContext.Provider
+      value={{
+        settingsReady:
+          settingsQuery.isSuccess &&
+          settingsRefreshingFor !==
+            settingsScope(workspaceId ?? "", userId ?? "") &&
+          settingsRefreshFailedFor !==
+            settingsScope(workspaceId ?? "", userId ?? ""),
+        getSettings,
+        updateSettings,
+        isSaving,
+      }}
+    >
       {children}
       <MessageToast
         onDismiss={(id) =>

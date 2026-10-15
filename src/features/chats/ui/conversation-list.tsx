@@ -1,4 +1,4 @@
-import { RotateCcw, Search } from "lucide-react";
+import { BellOff, RotateCcw, Search, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
@@ -8,8 +8,10 @@ import { messageConversationPath } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
 import { messagePreview, type Conversation } from "../api/conversations-api";
+import { useChatNotificationSettings } from "../model/chat-notification-context";
 
 import { ChatAvatar } from "./chat-avatar";
+import { ChatNotificationContextMenu } from "./chat-notification-menu";
 
 function previewText(
   conversation: Conversation,
@@ -19,6 +21,115 @@ function previewText(
   const text = messagePreview(conversation.last_message, labels);
   if (!conversation.last_message) return fallback;
   return text || fallback;
+}
+
+function ConversationRow({
+  conversation,
+  selected,
+  timeFormat,
+}: {
+  conversation: Conversation;
+  selected: boolean;
+  timeFormat: Intl.DateTimeFormat;
+}) {
+  const { t } = useTranslation("chats");
+  const { getSettings, settingsReady } = useChatNotificationSettings();
+  const { notificationsEnabled, soundEnabled } = getSettings(conversation.id);
+  const provider = channelProviders.find(
+    (item) => item.id === conversation.channel_provider,
+  );
+  const providerName = provider
+    ? t(provider.id === "telegram_bot" ? "telegramProvider" : "vkProvider")
+    : null;
+  const muted = !notificationsEnabled || !soundEnabled;
+  const mutedUnread = muted || !settingsReady;
+
+  return (
+    <li>
+      <ChatNotificationContextMenu
+        conversationId={conversation.id}
+        trigger={
+          <NavLink
+            aria-current={selected ? "page" : undefined}
+            className={`flex min-w-0 gap-3 border-b border-line px-4 py-4 transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:px-5 ${selected ? "bg-brand-soft" : ""}`}
+            to={messageConversationPath(conversation.id)}
+          >
+            <span className="relative size-10 shrink-0">
+              <ChatAvatar
+                name={conversation.title}
+                url={conversation.avatar_url}
+              />
+              {provider && (
+                <span className="absolute -bottom-0.5 -right-0.5 grid size-4.5 place-items-center rounded-full bg-surface ring-2 ring-surface">
+                  <img
+                    alt=""
+                    className="size-4 object-contain"
+                    src={provider.icon}
+                  />
+                  <span className="sr-only">{providerName}</span>
+                </span>
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 truncate text-sm font-semibold text-ink">
+                  {conversation.title}
+                </span>
+                {muted && (
+                  <span
+                    aria-label={
+                      notificationsEnabled
+                        ? t("soundDisabled")
+                        : t("notificationsDisabled")
+                    }
+                    className="shrink-0 text-muted"
+                    role="img"
+                  >
+                    {notificationsEnabled ? (
+                      <VolumeX aria-hidden="true" className="size-3.5" />
+                    ) : (
+                      <BellOff aria-hidden="true" className="size-3.5" />
+                    )}
+                  </span>
+                )}
+                {conversation.last_message && (
+                  <time
+                    className="ml-auto shrink-0 text-[11px] text-muted"
+                    dateTime={conversation.last_message.occurred_at}
+                  >
+                    {timeFormat.format(
+                      new Date(conversation.last_message.occurred_at),
+                    )}
+                  </time>
+                )}
+              </span>
+              <span className="mt-1 flex min-w-0 items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-xs text-muted">
+                  {previewText(conversation, t("unsupportedMessage"), {
+                    photo: t("photo"),
+                    file: t("file"),
+                    voice: t("voice"),
+                  })}
+                </span>
+                {conversation.unread_count > 0 && (
+                  <span
+                    aria-label={t("unreadCount", {
+                      count: conversation.unread_count,
+                    })}
+                    className={`grid min-w-5 shrink-0 place-items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${mutedUnread ? "bg-subtle text-muted-strong" : "bg-brand-fill text-on-brand"}`}
+                  >
+                    {conversation.unread_count > 99
+                      ? "99+"
+                      : conversation.unread_count}
+                  </span>
+                )}
+              </span>
+            </span>
+          </NavLink>
+        }
+      />
+    </li>
+  );
 }
 
 export function ConversationList({
@@ -114,89 +225,14 @@ export function ConversationList({
         ) : (
           <>
             <ul>
-              {conversations.map((conversation) => {
-                const provider = channelProviders.find(
-                  (item) => item.id === conversation.channel_provider,
-                );
-                const providerName = provider
-                  ? t(
-                      provider.id === "telegram_bot"
-                        ? "telegramProvider"
-                        : "vkProvider",
-                    )
-                  : null;
-
-                return (
-                  <li key={conversation.id}>
-                    <NavLink
-                      aria-current={
-                        selectedId === conversation.id ? "page" : undefined
-                      }
-                      className={`flex min-w-0 gap-3 border-b border-line px-4 py-4 transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:px-5 ${selectedId === conversation.id ? "bg-brand-soft" : ""}`}
-                      to={messageConversationPath(conversation.id)}
-                    >
-                      <span className="relative size-10 shrink-0">
-                        <ChatAvatar
-                          name={conversation.title}
-                          url={conversation.avatar_url}
-                        />
-                        {provider && (
-                          <span className="absolute -bottom-0.5 -right-0.5 grid size-4.5 place-items-center rounded-full bg-surface ring-2 ring-surface">
-                            <img
-                              alt=""
-                              className="size-4 object-contain"
-                              src={provider.icon}
-                            />
-                            <span className="sr-only">{providerName}</span>
-                          </span>
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-                            {conversation.title}
-                          </span>
-                          {conversation.last_message && (
-                            <time
-                              className="shrink-0 text-[11px] text-muted"
-                              dateTime={conversation.last_message.occurred_at}
-                            >
-                              {timeFormat.format(
-                                new Date(conversation.last_message.occurred_at),
-                              )}
-                            </time>
-                          )}
-                        </span>
-                        <span className="mt-1 flex min-w-0 items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate text-xs text-muted">
-                            {previewText(
-                              conversation,
-                              t("unsupportedMessage"),
-                              {
-                                photo: t("photo"),
-                                file: t("file"),
-                                voice: t("voice"),
-                              },
-                            )}
-                          </span>
-                          {conversation.unread_count > 0 && (
-                            <span
-                              aria-label={t("unreadCount", {
-                                count: conversation.unread_count,
-                              })}
-                              className="grid min-w-5 shrink-0 place-items-center rounded-full bg-brand-fill px-1.5 py-0.5 text-[11px] font-semibold text-on-brand"
-                            >
-                              {conversation.unread_count > 99
-                                ? "99+"
-                                : conversation.unread_count}
-                            </span>
-                          )}
-                        </span>
-                      </span>
-                    </NavLink>
-                  </li>
-                );
-              })}
+              {conversations.map((conversation) => (
+                <ConversationRow
+                  conversation={conversation}
+                  key={conversation.id}
+                  selected={selectedId === conversation.id}
+                  timeFormat={timeFormat}
+                />
+              ))}
             </ul>
             {isError && (
               <div className="px-5 py-3 text-sm text-danger" role="alert">

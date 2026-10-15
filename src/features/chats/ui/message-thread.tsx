@@ -6,10 +6,9 @@ import {
   ChevronDown,
   CircleAlert,
   ExternalLink,
+  MoreHorizontal,
   RotateCcw,
   Trash2,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,7 +25,6 @@ import {
   type Conversation,
 } from "../api/conversations-api";
 import { useThreadScroll } from "../hooks/use-thread-scroll";
-import { useChatNotificationSettings } from "../model/chat-notification-context";
 import { useCancelFailedMessages } from "../model/use-cancel-failed-messages";
 import {
   useRetryAllFailedMessages,
@@ -40,6 +38,7 @@ import {
 import { useVisibleMessageRead } from "../model/use-visible-message-read";
 
 import { ChatAvatar } from "./chat-avatar";
+import { ChatNotificationMenu } from "./chat-notification-menu";
 import { MessageComposer } from "./message-composer";
 import { MessageEditHistory } from "./message-edit-history";
 import { MessageFile } from "./message-file";
@@ -594,7 +593,9 @@ export function MessageThread({
     text: string;
     blocked: boolean;
   } | null>(null);
-  const { soundEnabled, setSoundEnabled } = useChatNotificationSettings();
+  const [notificationMenuOpenFor, setNotificationMenuOpenFor] = useState<
+    string | null
+  >(null);
   const {
     scrollRef,
     olderSentinelRef,
@@ -892,20 +893,24 @@ export function MessageThread({
             </div>
           </div>
         )}
-        <button
-          aria-label={t(soundEnabled ? "muteSound" : "enableSound")}
-          aria-pressed={!soundEnabled}
-          className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
-          onClick={() => setSoundEnabled(!soundEnabled)}
-          title={t(soundEnabled ? "muteSound" : "enableSound")}
-          type="button"
-        >
-          {soundEnabled ? (
-            <Volume2 aria-hidden="true" className="size-5" />
-          ) : (
-            <VolumeX aria-hidden="true" className="size-5" />
-          )}
-        </button>
+        <div className="flex shrink-0 items-center">
+          <ChatNotificationMenu
+            conversationId={conversationId}
+            onOpenChange={(open) =>
+              setNotificationMenuOpenFor(open ? conversationId : null)
+            }
+            open={notificationMenuOpenFor === conversationId}
+            trigger={
+              <button
+                aria-label={t("notificationSettingsForChat")}
+                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+                type="button"
+              >
+                <MoreHorizontal aria-hidden="true" className="size-5" />
+              </button>
+            }
+          />
+        </div>
       </header>
 
       <div className="relative min-h-0 flex-1">

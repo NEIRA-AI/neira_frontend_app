@@ -1,8 +1,18 @@
 import { createContext, useContext } from "react";
 
 export type ChatNotificationContextValue = {
+  settingsReady: boolean;
+  getSettings: (conversationId: string) => ChatNotificationSettings;
+  updateSettings: (
+    conversationId: string,
+    patch: Partial<ChatNotificationSettings>,
+  ) => Promise<void>;
+  isSaving: (conversationId: string) => boolean;
+};
+
+export type ChatNotificationSettings = {
   soundEnabled: boolean;
-  setSoundEnabled: (enabled: boolean) => void;
+  notificationsEnabled: boolean;
 };
 
 export const ChatNotificationContext =

@@ -9,6 +9,10 @@ export type MessageRevisions =
   components["schemas"]["ConversationMessageRevisionPage"];
 export type Conversation = components["schemas"]["ConversationSummary"];
 export type ConversationPage = components["schemas"]["ConversationPage"];
+export type ConversationNotificationSettings =
+  components["schemas"]["ConversationNotificationSettings"];
+export type ConversationNotificationSettingsPage =
+  components["schemas"]["ConversationNotificationSettingsPage"];
 export type MessagePage = components["schemas"]["ConversationMessagePage"];
 export type SendMessageRequest =
   components["schemas"]["ConversationSendRequest"];
@@ -48,6 +52,16 @@ export const conversationsQueryKey = (workspaceId: string) =>
 
 export const unreadChatCountQueryKey = (workspaceId: string) =>
   [...conversationsQueryKey(workspaceId), "unread-count"] as const;
+
+export const notificationSettingsQueryKey = (
+  workspaceId: string,
+  userId: string,
+) =>
+  [
+    ...conversationsQueryKey(workspaceId),
+    "notification-settings",
+    userId,
+  ] as const;
 
 export const conversationQueryKey = (workspaceId: string, id: string) =>
   [...conversationsQueryKey(workspaceId), "detail", id] as const;
@@ -91,6 +105,32 @@ export async function getConversation(id: string): Promise<Conversation> {
   const { data } = await api.get<Conversation>(
     `/conversations/${encodeURIComponent(id)}`,
     { workspace: true },
+  );
+  return data;
+}
+
+export async function listConversationNotificationSettings(
+  workspaceId: string,
+): Promise<ConversationNotificationSettingsPage> {
+  const { data } = await api.get<ConversationNotificationSettingsPage>(
+    "/conversations/notification-settings",
+    { workspace: true, workspaceScopeId: workspaceId },
+  );
+  return data;
+}
+
+export async function updateConversationNotificationSettings(
+  workspaceId: string,
+  conversationId: string,
+  patch: { soundEnabled?: boolean; notificationsEnabled?: boolean },
+): Promise<ConversationNotificationSettings> {
+  const { data } = await api.patch<ConversationNotificationSettings>(
+    `/conversations/${encodeURIComponent(conversationId)}/notification-settings`,
+    {
+      sound_enabled: patch.soundEnabled,
+      notifications_enabled: patch.notificationsEnabled,
+    },
+    { workspace: true, workspaceScopeId: workspaceId },
   );
   return data;
 }

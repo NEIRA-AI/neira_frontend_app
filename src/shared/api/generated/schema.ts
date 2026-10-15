@@ -1017,6 +1017,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conversations/notification-settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Conversation Notification Settings */
+    get: operations["list_conversation_notification_settings_api_v1_conversations_notification_settings_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/conversations/stream": {
     parameters: {
       query?: never;
@@ -1049,6 +1066,23 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conversations/{conversation_id}/notification-settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Patch Conversation Notification Settings */
+    patch: operations["patch_conversation_notification_settings_api_v1_conversations__conversation_id__notification_settings_patch"];
     trace?: never;
   };
   "/api/v1/conversations/{conversation_id}/messages": {
@@ -1864,6 +1898,30 @@ export interface components {
       width: number | null;
       /** Height */
       height: number | null;
+    };
+    /** ConversationNotificationSettings */
+    ConversationNotificationSettings: {
+      /**
+       * Conversation Id
+       * Format: uuid
+       */
+      conversation_id: string;
+      /** Sound Enabled */
+      sound_enabled: boolean;
+      /** Notifications Enabled */
+      notifications_enabled: boolean;
+    };
+    /** ConversationNotificationSettingsPage */
+    ConversationNotificationSettingsPage: {
+      /** Items */
+      items: components["schemas"]["ConversationNotificationSettings"][];
+    };
+    /** ConversationNotificationSettingsPatch */
+    ConversationNotificationSettingsPatch: {
+      /** Sound Enabled */
+      sound_enabled?: boolean | null;
+      /** Notifications Enabled */
+      notifications_enabled?: boolean | null;
     };
     /** ConversationPage */
     ConversationPage: {
@@ -4925,6 +4983,37 @@ export interface operations {
       };
     };
   };
+  list_conversation_notification_settings_api_v1_conversations_notification_settings_get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationNotificationSettingsPage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   stream_conversations_api_v1_conversations_stream_get: {
     parameters: {
       query?: never;
@@ -4976,6 +5065,43 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ConversationSummary"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_conversation_notification_settings_api_v1_conversations__conversation_id__notification_settings_patch: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConversationNotificationSettingsPatch"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationNotificationSettings"];
         };
       };
       /** @description Validation Error */
