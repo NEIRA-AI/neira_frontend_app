@@ -19,7 +19,6 @@ import messagesIcon from "../assets/messages.svg";
 import paymentIcon from "../assets/payment.svg";
 import robotIcon from "../assets/robot.svg";
 import settingsIcon from "../assets/settings.svg";
-import statisticIcon from "../assets/statistic.svg";
 
 import { AccountCard } from "./account-card";
 
@@ -59,7 +58,7 @@ export function SidebarLogo({
       aria-label="NEIRA"
       className="flex min-w-0 items-center gap-1 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       onClick={onNavigate}
-      to={ROUTES.HOME}
+      to={ROUTES.DASHBOARD}
     >
       {collapsed ? (
         <span className="relative block size-[34px]">
@@ -142,7 +141,7 @@ function SidebarNavigationItem({
             : undefined
         }
         className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
-        end={to === ROUTES.HOME}
+        end={to === ROUTES.DASHBOARD}
         onClick={onNavigate}
         title={collapsed ? label : undefined}
         to={to}
@@ -217,8 +216,7 @@ export function Sidebar({
     {
       label: t("main"),
       items: [
-        { label: t("home"), to: ROUTES.HOME, icon: beginningIcon },
-        { label: t("statistics"), icon: statisticIcon },
+        { label: t("dashboard"), to: ROUTES.DASHBOARD, icon: beginningIcon },
         { label: t("channels"), to: ROUTES.CHANNELS, icon: channelsIcon },
         { label: t("contactDirectory"), to: ROUTES.CONTACTS, icon: UsersRound },
         { label: t("funnels"), to: ROUTES.FUNNELS, icon: ListFilter },
@@ -228,7 +226,7 @@ export function Sidebar({
       label: t("aiTools"),
       items: [
         { label: t("aiAgents"), icon: robotIcon, dimmed: true },
-        { label: t("knowledgeBase"), icon: booksIcon },
+        { label: t("knowledgeBase"), icon: booksIcon, dimmed: true },
         {
           label: t("messages"),
           to: ROUTES.MESSAGES,
@@ -241,8 +239,8 @@ export function Sidebar({
     {
       label: t("system"),
       items: [
-        { label: t("billing"), icon: paymentIcon },
-        { label: t("documentation"), icon: knowledgeIcon },
+        { label: t("billing"), icon: paymentIcon, dimmed: true },
+        { label: t("documentation"), icon: knowledgeIcon, dimmed: true },
         {
           label: t("notifications"),
           to: ROUTES.NOTIFICATIONS,

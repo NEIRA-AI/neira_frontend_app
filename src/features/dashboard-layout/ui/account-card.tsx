@@ -25,7 +25,7 @@ export function AccountCard({
         aria-label={t("accountLabel")}
         className="flex h-20 items-center justify-center"
       >
-        <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-brand-20 text-[23px] font-semibold text-brand-light">
+        <span className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-brand-20 text-[21px] font-semibold text-brand-light">
           {user?.avatar_url ? (
             <img
               alt=""
@@ -55,7 +55,7 @@ export function AccountCard({
       >
         <span
           aria-hidden="true"
-          className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-20 text-[20px] font-semibold text-brand"
+          className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-20 text-[18px] font-semibold text-brand"
         >
           {user?.avatar_url ? (
             <img

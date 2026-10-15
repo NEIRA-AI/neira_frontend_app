@@ -1,8 +1,7 @@
 const ru = {
   navigation: "Навигация",
   main: "ОСНОВНОЕ",
-  home: "Начало",
-  statistics: "Статистика",
+  dashboard: "Дашборд",
   channels: "Каналы",
   contactDirectory: "Контакты",
   funnels: "Воронки",
@@ -34,8 +33,7 @@ const ru = {
 const en = {
   navigation: "Navigation",
   main: "MAIN",
-  home: "Home",
-  statistics: "Statistics",
+  dashboard: "Dashboard",
   channels: "Channels",
   contactDirectory: "Contacts",
   funnels: "Funnels",

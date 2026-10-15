@@ -10,6 +10,7 @@ import {
   channelsPreviewTranslations,
 } from "@/features/channels-preview";
 import { dashboardTranslations } from "@/features/dashboard-layout";
+import { dashboardPageTranslations } from "@/features/dashboard";
 import { errorTranslations } from "@/features/error-boundary";
 import { funnelsTranslations } from "@/features/funnels";
 import { invitationsTranslations } from "@/features/invitations";
@@ -28,6 +29,7 @@ const ru = {
   app: appTranslations.ru,
   auth: authTranslations.ru,
   dashboard: dashboardTranslations.ru,
+  dashboardPage: dashboardPageTranslations.ru,
   channels: channelsTranslations.ru,
   chats: chatsTranslations.ru,
   contacts: contactsTranslations.ru,
@@ -51,6 +53,7 @@ const en = {
   app: appTranslations.en,
   auth: authTranslations.en,
   dashboard: dashboardTranslations.en,
+  dashboardPage: dashboardPageTranslations.en,
   channels: channelsTranslations.en,
   chats: chatsTranslations.en,
   contacts: contactsTranslations.en,

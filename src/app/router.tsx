@@ -25,7 +25,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: ROUTES.HOME,
-        loader: () => redirect(ROUTES.SETTINGS),
+        loader: () => redirect(ROUTES.DASHBOARD),
         Component: LoadingScreen,
       },
       {
@@ -80,6 +80,10 @@ export const router = createBrowserRouter([
               {
                 element: <WorkspaceRequiredRoute />,
                 children: [
+                  {
+                    path: ROUTES.DASHBOARD,
+                    lazy: () => import("@/features/dashboard/dashboard.page"),
+                  },
                   {
                     path: ROUTES.CHANNELS,
                     lazy: () => import("@/features/channels/channels.page"),

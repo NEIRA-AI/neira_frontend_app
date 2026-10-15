@@ -10,6 +10,7 @@ export const ROUTES = {
   SELECT_WORKSPACE: "/auth/select-workspace",
   VERIFY: "/auth/verify",
   INVITATION: "/invites/:token",
+  DASHBOARD: "/dashboard",
   CHANNELS: "/channels",
   CONTACTS: "/contacts",
   CONTACT_DETAILS: "/contacts/:contactId",
