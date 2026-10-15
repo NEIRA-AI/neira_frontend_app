@@ -3,6 +3,10 @@ import type { components, paths } from "@/shared/api/generated/schema";
 
 export type ChatMessage = components["schemas"]["ConversationMessage"];
 export type MessageAuthor = components["schemas"]["ConversationMessageAuthor"];
+export type MessageRevision =
+  components["schemas"]["ConversationMessageRevision"];
+export type MessageRevisions =
+  components["schemas"]["ConversationMessageRevisionPage"];
 export type Conversation = components["schemas"]["ConversationSummary"];
 export type ConversationPage = components["schemas"]["ConversationPage"];
 export type MessagePage = components["schemas"]["ConversationMessagePage"];
@@ -60,6 +64,18 @@ export const messageAuthorQueryKey = (
   messageId: string,
 ) =>
   [...messageAuthorsQueryKey(workspaceId, conversationId), messageId] as const;
+
+export const messageRevisionsQueryKey = (
+  workspaceId: string,
+  conversationId: string,
+  messageId?: string,
+) =>
+  [
+    ...conversationsQueryKey(workspaceId),
+    "message-revisions",
+    conversationId,
+    ...(messageId ? [messageId] : []),
+  ] as const;
 
 export async function listConversations(
   cursor: string | null,
@@ -119,6 +135,21 @@ export async function getMessageAuthor(
   const { data } = await api.get<MessageAuthor>(
     `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/author`,
     { workspace: true },
+  );
+  return data;
+}
+
+export async function getMessageRevisions(
+  conversationId: string,
+  messageId: string,
+  beforeRevision: number | null,
+): Promise<MessageRevisions> {
+  const { data } = await api.get<MessageRevisions>(
+    `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/revisions`,
+    {
+      params: { limit: 50, before_revision: beforeRevision ?? undefined },
+      workspace: true,
+    },
   );
   return data;
 }

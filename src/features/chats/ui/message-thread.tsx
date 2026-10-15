@@ -41,6 +41,7 @@ import { useVisibleMessageRead } from "../model/use-visible-message-read";
 
 import { ChatAvatar } from "./chat-avatar";
 import { MessageComposer } from "./message-composer";
+import { MessageEditHistory } from "./message-edit-history";
 import { MessageFile } from "./message-file";
 import { MessagePhotoMosaic } from "./message-photo-mosaic";
 import { MessagePhotoViewer } from "./message-photo-viewer";
@@ -257,6 +258,7 @@ function FailedMessagesBadge({
 function MessageRow({
   canManageFailure,
   message,
+  workspaceId,
   timeFormat,
   failedTimeFormat,
   unsupportedMessage,
@@ -274,6 +276,7 @@ function MessageRow({
 }: {
   canManageFailure: boolean;
   message: ChatMessage;
+  workspaceId: string;
   timeFormat: Intl.DateTimeFormat;
   failedTimeFormat: Intl.DateTimeFormat;
   unsupportedMessage: string;
@@ -464,15 +467,21 @@ function MessageRow({
               {text || unsupportedMessage}
             </p>
           )}
-          <time
-            className="mt-1 block text-right text-[10px] text-muted"
-            dateTime={message.occurred_at}
-          >
-            {(deliveryStatus === "failed"
-              ? failedTimeFormat
-              : timeFormat
-            ).format(new Date(message.occurred_at))}
-          </time>
+          <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-muted">
+            {message.edited_at && (
+              <MessageEditHistory
+                conversationId={message.conversation_id}
+                messageId={message.id}
+                workspaceId={workspaceId}
+              />
+            )}
+            <time dateTime={message.occurred_at}>
+              {(deliveryStatus === "failed"
+                ? failedTimeFormat
+                : timeFormat
+              ).format(new Date(message.occurred_at))}
+            </time>
+          </div>
           {isOutgoing && deliveryStatus === "failed" && deliveryLabel ? (
             <FailedMessageStatus
               busy={retrying || cancelling || actionsBusy}
@@ -1003,6 +1012,7 @@ export function MessageThread({
                         failedTimeFormat={failedTimeFormat}
                         key={message.id}
                         message={message}
+                        workspaceId={workspaceId}
                         deliveryStatusText={deliveryStatusText}
                         onRetryFailed={(failedMessage) => {
                           void retryFailed(failedMessage);
@@ -1093,6 +1103,7 @@ function FragmentWithDay({
   failedSectionTitle,
   failedTimeFormat,
   message,
+  workspaceId,
   timeFormat,
   unsupportedMessage,
   deliveryStatusText,
@@ -1118,6 +1129,7 @@ function FragmentWithDay({
   failedSectionTitle: string | null;
   failedTimeFormat: Intl.DateTimeFormat;
   message: ChatMessage;
+  workspaceId: string;
   timeFormat: Intl.DateTimeFormat;
   unsupportedMessage: string;
   deliveryStatusText: Record<"pending" | "failed" | "unknown", string>;
@@ -1162,6 +1174,7 @@ function FragmentWithDay({
         canManageFailure={canManageFailure}
         actionsBusy={actionsBusy}
         message={message}
+        workspaceId={workspaceId}
         deliveryStatusText={deliveryStatusText}
         failedTimeFormat={failedTimeFormat}
         onRetryFailed={onRetryFailed}

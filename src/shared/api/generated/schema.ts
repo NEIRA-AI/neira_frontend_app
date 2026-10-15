@@ -1087,6 +1087,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conversations/{conversation_id}/messages/{message_id}/revisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Message Revisions */
+    get: operations["get_message_revisions_api_v1_conversations__conversation_id__messages__message_id__revisions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/conversations/{conversation_id}/messages/{message_id}/author": {
     parameters: {
       query?: never;
@@ -1752,6 +1769,8 @@ export interface components {
        * Format: date-time
        */
       occurred_at: string;
+      /** Edited At */
+      edited_at: string | null;
       /** Parts */
       parts: components["schemas"]["ConversationMessagePart"][];
     };
@@ -1798,6 +1817,53 @@ export interface components {
       media_url: string | null;
       /** Media Url Expires At */
       media_url_expires_at: string | null;
+    };
+    /** ConversationMessageRevision */
+    ConversationMessageRevision: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Revision No */
+      revision_no: number;
+      /**
+       * Changed At
+       * Format: date-time
+       */
+      changed_at: string;
+      /** Is Current */
+      is_current: boolean;
+      /** Parts */
+      parts: components["schemas"]["ConversationMessageRevisionPart"][];
+    };
+    /** ConversationMessageRevisionPage */
+    ConversationMessageRevisionPage: {
+      /** Items */
+      items: components["schemas"]["ConversationMessageRevision"][];
+      /** Next Cursor */
+      next_cursor: number | null;
+    };
+    /** ConversationMessageRevisionPart */
+    ConversationMessageRevisionPart: {
+      /** Position */
+      position: number;
+      /** Kind */
+      kind: string;
+      /** Text */
+      text: string | null;
+      /** Media Type */
+      media_type: string | null;
+      /** Size Bytes */
+      size_bytes: number | null;
+      /** File Name */
+      file_name: string | null;
+      /** Duration Seconds */
+      duration_seconds: number | null;
+      /** Width */
+      width: number | null;
+      /** Height */
+      height: number | null;
     };
     /** ConversationPage */
     ConversationPage: {
@@ -5050,6 +5116,43 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_message_revisions_api_v1_conversations__conversation_id__messages__message_id__revisions_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        before_revision?: number | null;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        conversation_id: string;
+        message_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationMessageRevisionPage"];
+        };
       };
       /** @description Validation Error */
       422: {

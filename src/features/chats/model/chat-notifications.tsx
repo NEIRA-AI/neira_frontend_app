@@ -18,6 +18,7 @@ import {
   getConversation,
   getMessage,
   messageAuthorsQueryKey,
+  messageRevisionsQueryKey,
   messagesQueryKey,
   messagePreview,
   unreadChatCountQueryKey,
@@ -219,6 +220,32 @@ export function ChatNotifications({ children }: PropsWithChildren) {
       }
     }
 
+    function invalidateEditedMessage(
+      conversationId: string,
+      messageId?: string,
+    ) {
+      void queryClient.invalidateQueries({
+        queryKey: conversationsQueryKey(activeWorkspaceId!),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: conversationQueryKey(activeWorkspaceId!, conversationId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: messagesQueryKey(activeWorkspaceId!, conversationId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: messageRevisionsQueryKey(
+          activeWorkspaceId!,
+          conversationId,
+          messageId,
+        ),
+        exact: Boolean(messageId),
+      });
+    }
+
     function invalidateContactInquiries(conversation: Conversation) {
       if (!conversation.contact_id) return;
       void queryClient.invalidateQueries({
@@ -319,6 +346,15 @@ export function ChatNotifications({ children }: PropsWithChildren) {
         if (event.event === "profile") {
           const payload = parseEvent(event.data);
           if (payload) invalidateProfile(payload.conversation_id);
+          return;
+        }
+        if (event.event === "edit") {
+          const payload = parseEvent(event.data);
+          if (payload)
+            invalidateEditedMessage(
+              payload.conversation_id,
+              payload.message_id,
+            );
           return;
         }
         if (
