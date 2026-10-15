@@ -256,6 +256,7 @@ export function ChatNotifications({ children }: PropsWithChildren) {
             preview: messagePreview(message, {
               photo: t("photo"),
               file: t("file"),
+              voice: t("voice"),
             }),
           };
           setToasts((current) =>

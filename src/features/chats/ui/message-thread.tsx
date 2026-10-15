@@ -44,11 +44,12 @@ import { MessageComposer } from "./message-composer";
 import { MessageFile } from "./message-file";
 import { MessagePhotoMosaic } from "./message-photo-mosaic";
 import { MessagePhotoViewer } from "./message-photo-viewer";
+import { MessageVoice } from "./message-voice";
 
 type MessagePart = ChatMessage["parts"][number];
 type MediaGroup =
   | { kind: "photos"; parts: MessagePart[] }
-  | { kind: "file"; part: MessagePart };
+  | { kind: "file" | "voice"; part: MessagePart };
 
 function groupMediaParts(parts: MessagePart[]): MediaGroup[] {
   const groups: MediaGroup[] = [];
@@ -57,8 +58,8 @@ function groupMediaParts(parts: MessagePart[]): MediaGroup[] {
       const last = groups[groups.length - 1];
       if (last?.kind === "photos") last.parts.push(part);
       else groups.push({ kind: "photos", parts: [part] });
-    } else {
-      groups.push({ kind: "file", part });
+    } else if (part.kind === "file" || part.kind === "voice") {
+      groups.push({ kind: part.kind, part });
     }
   }
   return groups;
@@ -296,7 +297,10 @@ function MessageRow({
   const { t } = useTranslation("chats");
   const text = messageText(message);
   const mediaParts = message.parts
-    .filter((part) => part.kind === "image" || part.kind === "file")
+    .filter(
+      (part) =>
+        part.kind === "image" || part.kind === "file" || part.kind === "voice",
+    )
     .sort((a, b) => a.position - b.position);
   const photoParts = mediaParts.filter((part) => part.kind === "image");
   const hasPhotos = photoParts.length > 0;
@@ -436,10 +440,17 @@ function MessageRow({
                   className={hasPhotos ? "px-3 py-2" : undefined}
                   key={group.part.id}
                 >
-                  <MessageFile
-                    part={group.part}
-                    refreshMessage={refreshMediaMessage}
-                  />
+                  {group.kind === "voice" ? (
+                    <MessageVoice
+                      part={group.part}
+                      refreshMessage={refreshMediaMessage}
+                    />
+                  ) : (
+                    <MessageFile
+                      part={group.part}
+                      refreshMessage={refreshMediaMessage}
+                    />
+                  )}
                 </div>
               ),
             )}

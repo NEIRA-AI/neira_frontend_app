@@ -14,7 +14,7 @@ import { ChatAvatar } from "./chat-avatar";
 function previewText(
   conversation: Conversation,
   fallback: string,
-  labels: { photo: string; file: string },
+  labels: { photo: string; file: string; voice: string },
 ) {
   const text = messagePreview(conversation.last_message, labels);
   if (!conversation.last_message) return fallback;
@@ -172,7 +172,11 @@ export function ConversationList({
                             {previewText(
                               conversation,
                               t("unsupportedMessage"),
-                              { photo: t("photo"), file: t("file") },
+                              {
+                                photo: t("photo"),
+                                file: t("file"),
+                                voice: t("voice"),
+                              },
                             )}
                           </span>
                           {conversation.unread_count > 0 && (

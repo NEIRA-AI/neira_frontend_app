@@ -259,18 +259,27 @@ export function messageText(message: ChatMessage | null): string {
 
 export function messagePreview(
   message: ChatMessage | null,
-  labels: { photo: string; file: string },
+  labels: { photo: string; file: string; voice: string },
 ): string {
   if (!message) return "";
   const text = messageText(message);
   const seen = new Set<string>();
   const media = message.parts
-    .filter((part) => part.kind === "image" || part.kind === "file")
+    .filter(
+      (part) =>
+        part.kind === "image" || part.kind === "file" || part.kind === "voice",
+    )
     .sort((a, b) => a.position - b.position)
     .flatMap((part) => {
       if (seen.has(part.kind)) return [];
       seen.add(part.kind);
-      return [part.kind === "image" ? labels.photo : labels.file];
+      return [
+        part.kind === "image"
+          ? labels.photo
+          : part.kind === "voice"
+            ? labels.voice
+            : labels.file,
+      ];
     });
   if (text) media.push(text);
   return media.join(" · ");

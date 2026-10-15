@@ -1788,6 +1788,8 @@ export interface components {
       size_bytes: number | null;
       /** File Name */
       file_name: string | null;
+      /** Duration Seconds */
+      duration_seconds: number | null;
       /** Width */
       width: number | null;
       /** Height */
