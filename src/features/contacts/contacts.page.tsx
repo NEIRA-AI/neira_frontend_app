@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth";
 import { Button } from "@/shared/ui/button";
+import { isRevisionConflict } from "@/shared/api/revision-conflict";
 
 import type { ContactSummary } from "./api/contacts-api";
 import { useDeleteContact } from "./model/use-delete-contact";
@@ -50,6 +51,8 @@ function ContactsPage() {
     contactsQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const permissionDenied = (error: unknown) =>
     axios.isAxiosError(error) && error.response?.status === 403;
+  const editConflict = update.isError && isRevisionConflict(update.error);
+  const deleteConflict = remove.isError && isRevisionConflict(remove.error);
 
   return (
     <div className="min-h-full bg-page text-ink">
@@ -167,22 +170,35 @@ function ContactsPage() {
       {editingContact && (
         <EditContactDialog
           busy={update.isPending}
+          conflict={editConflict}
           contact={editingContact}
           errorMessage={
             update.isError
               ? t(
                   permissionDenied(update.error)
                     ? "permissionDenied"
-                    : "saveFailed",
+                    : editConflict
+                      ? "editConflict"
+                      : "saveFailed",
                 )
               : null
           }
           key={editingContact.id}
           onClose={() => setEditingAction(null)}
+          onRefresh={() => {
+            setEditingAction(null);
+            void contactsQuery.refetch();
+          }}
           onSave={(request) => {
             if (!canManage || editingAction?.workspaceId !== workspace) return;
             update.mutate(
-              { id: editingContact.id, request },
+              {
+                id: editingContact.id,
+                request: {
+                  ...request,
+                  expected_revision: editingContact.revision,
+                },
+              },
               { onSuccess: () => setEditingAction(null) },
             );
           }}
@@ -191,23 +207,36 @@ function ContactsPage() {
       {deletingContact && (
         <DeleteContactDialog
           busy={remove.isPending}
+          conflict={deleteConflict}
           contact={deletingContact}
           errorMessage={
             remove.isError
               ? t(
                   permissionDenied(remove.error)
                     ? "permissionDenied"
-                    : "deleteFailed",
+                    : deleteConflict
+                      ? "deleteConflict"
+                      : "deleteFailed",
                 )
               : null
           }
           key={deletingContact.id}
           onClose={() => setDeletingAction(null)}
+          onRefresh={() => {
+            setDeletingAction(null);
+            void contactsQuery.refetch();
+          }}
           onConfirm={() => {
             if (!canManage || deletingAction?.workspaceId !== workspace) return;
-            remove.mutate(deletingContact.id, {
-              onSuccess: () => setDeletingAction(null),
-            });
+            remove.mutate(
+              {
+                id: deletingContact.id,
+                expectedRevision: deletingContact.revision,
+              },
+              {
+                onSuccess: () => setDeletingAction(null),
+              },
+            );
           }}
         />
       )}

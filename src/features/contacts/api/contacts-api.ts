@@ -4,7 +4,7 @@ import type { components } from "@/shared/api/generated/schema";
 export type ContactDetail = components["schemas"]["ContactDetail"];
 export type ContactSummary = components["schemas"]["ContactSummary"];
 export type ContactUpdate = components["schemas"]["ContactUpdate"];
-type ContactPage = components["schemas"]["ContactPage"];
+export type ContactPage = components["schemas"]["ContactPage"];
 type InquiryPage = components["schemas"]["InquiryPage"];
 
 export const contactsQueryKey = (workspaceId: string) =>
@@ -42,10 +42,17 @@ export async function listContacts(
   return data;
 }
 
-export async function getContact(id: string): Promise<ContactDetail> {
+export async function getContact(
+  id: string,
+  options?: { workspaceId?: string; signal?: AbortSignal },
+): Promise<ContactDetail> {
   const { data } = await api.get<ContactDetail>(
     `/contacts/${encodeURIComponent(id)}`,
-    { workspace: true },
+    {
+      workspace: true,
+      workspaceScopeId: options?.workspaceId,
+      signal: options?.signal,
+    },
   );
   return data;
 }
@@ -62,8 +69,12 @@ export async function updateContact(
   return data;
 }
 
-export async function deleteContact(id: string): Promise<void> {
+export async function deleteContact(
+  id: string,
+  expectedRevision: number,
+): Promise<void> {
   await api.delete(`/contacts/${encodeURIComponent(id)}`, {
+    params: { expected_revision: expectedRevision },
     workspace: true,
   });
 }

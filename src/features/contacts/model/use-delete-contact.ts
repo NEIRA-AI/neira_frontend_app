@@ -11,13 +11,14 @@ export function useDeleteContact(workspaceId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteContact,
-    onSuccess: (_result, id) => {
+    mutationFn: (input: { id: string; expectedRevision: number }) =>
+      deleteContact(input.id, input.expectedRevision),
+    onSuccess: (_result, input) => {
       queryClient.removeQueries({
-        queryKey: contactQueryKey(workspaceId, id),
+        queryKey: contactQueryKey(workspaceId, input.id),
       });
       queryClient.removeQueries({
-        queryKey: contactInquiriesQueryPrefix(workspaceId, id),
+        queryKey: contactInquiriesQueryPrefix(workspaceId, input.id),
       });
       void queryClient.invalidateQueries({
         queryKey: contactsQueryKey(workspaceId),

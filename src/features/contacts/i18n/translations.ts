@@ -23,6 +23,11 @@ const ru = {
   deleting: "Удаляем…",
   saveFailed: "Не удалось сохранить контакт. Попробуйте ещё раз.",
   deleteFailed: "Не удалось удалить контакт. Попробуйте ещё раз.",
+  editConflict:
+    "Контакт изменён другим участником. Ваши правки не сохранены. Обновите данные и внесите их заново.",
+  deleteConflict:
+    "Контакт изменён другим участником. Удаление не выполнено. Обновите данные перед повтором.",
+  refreshContact: "Обновить данные",
   permissionDenied: "У вас нет прав на это действие.",
   openChannelConversation: "Открыть диалог {{name}} в {{channel}}",
   lastActivity: "Последняя активность",
@@ -100,6 +105,11 @@ const en = {
   deleting: "Deleting…",
   saveFailed: "Could not save the contact. Please try again.",
   deleteFailed: "Could not delete the contact. Please try again.",
+  editConflict:
+    "Another member changed this contact. Your edits were not saved. Refresh the data and enter them again.",
+  deleteConflict:
+    "Another member changed this contact. It was not deleted. Refresh the data before trying again.",
+  refreshContact: "Refresh data",
   permissionDenied: "You do not have permission to do this.",
   openChannelConversation: "Open {{name}} conversation in {{channel}}",
   lastActivity: "Last active",

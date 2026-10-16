@@ -983,6 +983,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/inquiries/{inquiry_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Inquiry */
+    get: operations["get_inquiry_api_v1_inquiries__inquiry_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/inquiries/{inquiry_id}/status": {
     parameters: {
       query?: never;
@@ -1394,6 +1411,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/events/state": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Current Change State */
+    get: operations["current_change_state_api_v1_events_state_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/events/stream": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stream Changes */
+    get: operations["stream_changes_api_v1_events_stream_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1670,6 +1721,8 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Revision */
+      revision: number;
       /** Display Name */
       display_name: string;
       /**
@@ -1711,6 +1764,8 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Revision */
+      revision: number;
       /** Display Name */
       display_name: string;
       /**
@@ -1738,6 +1793,8 @@ export interface components {
     };
     /** ContactUpdate */
     ContactUpdate: {
+      /** Expected Revision */
+      expected_revision: number;
       /** Display Name */
       display_name?: string | null;
       /** Email */
@@ -1956,6 +2013,8 @@ export interface components {
     ConversationReadResult: {
       /** Unread Count */
       unread_count: number;
+      /** Changed */
+      changed: boolean;
     };
     /** ConversationSendRequest */
     ConversationSendRequest: {
@@ -2231,6 +2290,8 @@ export interface components {
        * Format: uuid
        */
       status_id: string;
+      /** Expected Revision */
+      expected_revision: number;
     };
     /** InquirySummary */
     InquirySummary: {
@@ -2239,6 +2300,8 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Revision */
+      revision: number;
       /**
        * Contact Id
        * Format: uuid
@@ -4462,7 +4525,9 @@ export interface operations {
   };
   delete_contact_api_v1_contacts__contact_id__delete: {
     parameters: {
-      query?: never;
+      query: {
+        expected_revision: number;
+      };
       header: {
         "X-Neira-Workspace-Id": string;
       };
@@ -4930,6 +4995,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["InquiryPage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_inquiry_api_v1_inquiries__inquiry_id__get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        inquiry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InquirySummary"];
         };
       };
       /** @description Validation Error */
@@ -5853,6 +5951,70 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  current_change_state_api_v1_events_state_get: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: number | null;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  stream_changes_api_v1_events_stream_get: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Neira-Workspace-Id"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
       };
       /** @description Validation Error */
       422: {

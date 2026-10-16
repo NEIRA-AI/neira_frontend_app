@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
+  conversationQueryKey,
   conversationsQueryKey,
   listFailedMessageIds,
+  messagesQueryKey,
   retryMessage,
 } from "../api/conversations-api";
 
@@ -79,9 +81,19 @@ export function useRetryAllFailedMessages(
       }
       return { ...progress, stopped: false };
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({
+    onSettled: () => {
+      void queryClient.invalidateQueries({
         queryKey: conversationsQueryKey(workspaceId),
-      }),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: conversationQueryKey(workspaceId, conversationId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: messagesQueryKey(workspaceId, conversationId),
+        exact: true,
+      });
+    },
   });
 }

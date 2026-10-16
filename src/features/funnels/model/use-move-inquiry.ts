@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 
+import { contactInquiriesQueryPrefix } from "@/features/contacts";
+
 import {
   funnelInquiriesQueryKey,
   moveInquiryToStatus,
@@ -12,6 +14,7 @@ type MoveInquiryInput = {
   inquiryId: string;
   statusId: string;
   statusName: string;
+  expectedRevision: number;
 };
 
 type InquiryPages = InfiniteData<InquiryPage, string | null>;
@@ -20,8 +23,8 @@ export function useMoveInquiry(workspaceId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ inquiryId, statusId }: MoveInquiryInput) =>
-      moveInquiryToStatus({ inquiryId, statusId }),
+    mutationFn: ({ inquiryId, statusId, expectedRevision }: MoveInquiryInput) =>
+      moveInquiryToStatus({ inquiryId, statusId, expectedRevision }),
     onMutate: async (input: MoveInquiryInput) => {
       const key = funnelInquiriesQueryKey(workspaceId, input.funnelId);
       await queryClient.cancelQueries({ queryKey: key });
@@ -63,17 +66,23 @@ export function useMoveInquiry(workspaceId: string) {
         });
       }
 
-      return { key, previous };
+      return { key, previous, contactId: currentInquiry?.contact_id };
     },
     onError: (_error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(context.key, context.previous);
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _error, input, context) => {
       void queryClient.invalidateQueries({
-        queryKey: ["private", "inquiries", workspaceId],
+        queryKey: funnelInquiriesQueryKey(workspaceId, input.funnelId),
+        exact: true,
       });
+      if (context?.contactId) {
+        void queryClient.invalidateQueries({
+          queryKey: contactInquiriesQueryPrefix(workspaceId, context.contactId),
+        });
+      }
     },
   });
 }

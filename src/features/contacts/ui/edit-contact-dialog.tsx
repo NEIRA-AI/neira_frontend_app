@@ -11,15 +11,19 @@ import type { ContactSummary, ContactUpdate } from "../api/contacts-api";
 export function EditContactDialog({
   contact,
   busy,
+  conflict,
   errorMessage,
   onClose,
+  onRefresh,
   onSave,
 }: {
   contact: ContactSummary;
   busy: boolean;
+  conflict: boolean;
   errorMessage: string | null;
   onClose: () => void;
-  onSave: (request: ContactUpdate) => void;
+  onRefresh: () => void;
+  onSave: (request: Omit<ContactUpdate, "expected_revision">) => void;
 }) {
   const { t } = useTranslation("contacts");
   const [name, setName] = useState(contact.display_name);
@@ -28,7 +32,7 @@ export function EditContactDialog({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !name.trim()) return;
+    if (busy || conflict || !name.trim()) return;
     onSave({
       display_name: name.trim(),
       email: email.trim(),
@@ -113,10 +117,15 @@ export function EditContactDialog({
               </p>
             )}
             <div className="flex flex-wrap justify-end gap-3 pt-2">
+              {conflict && (
+                <Button disabled={busy} onClick={onRefresh} variant="outline">
+                  {t("refreshContact")}
+                </Button>
+              )}
               <Button disabled={busy} onClick={onClose} variant="ghost">
                 {t("cancel")}
               </Button>
-              <Button disabled={busy || !name.trim()} type="submit">
+              <Button disabled={busy || conflict || !name.trim()} type="submit">
                 {busy ? t("saving") : t("save")}
               </Button>
             </div>

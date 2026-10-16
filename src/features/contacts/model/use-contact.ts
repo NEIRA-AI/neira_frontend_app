@@ -7,6 +7,5 @@ export function useContact(workspaceId: string, contactId: string) {
     queryKey: contactQueryKey(workspaceId, contactId),
     queryFn: () => getContact(contactId),
     enabled: Boolean(workspaceId && contactId),
-    refetchInterval: 60_000,
   });
 }

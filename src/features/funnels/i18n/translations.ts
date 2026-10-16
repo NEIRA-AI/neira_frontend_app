@@ -25,6 +25,9 @@ const ru = {
   dragInquiryHelp: "Перетащите обращение за значок на карточке в нужный этап.",
   moveInquiry: "Переместить обращение контакта «{{name}}»",
   moveInquiryError: "Не удалось переместить обращение. Попробуйте ещё раз.",
+  moveInquiryConflict:
+    "Обращение изменилось в другой сессии. Обновите доску перед повторной попыткой.",
+  refreshInquiries: "Обновить обращения",
   emptyColumn: "Пока нет обращений",
   emptyColumnHelp: "Когда появятся обращения, они будут видны здесь.",
   moreInquiriesInColumn:
@@ -124,6 +127,9 @@ const en = {
   dragInquiryHelp: "Drag a card by its handle into another stage.",
   moveInquiry: "Move inquiry for contact “{{name}}”",
   moveInquiryError: "Could not move the inquiry. Please try again.",
+  moveInquiryConflict:
+    "The inquiry changed in another session. Refresh the board before trying again.",
+  refreshInquiries: "Refresh inquiries",
   emptyColumn: "No conversations yet",
   emptyColumnHelp: "Conversations will appear here when they arrive.",
   moreInquiriesInColumn: "Load more inquiries to see this stage’s cards.",

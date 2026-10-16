@@ -1,8 +1,5 @@
-import {
-  EventStreamContentType,
-  fetchEventSource,
-} from "@microsoft/fetch-event-source";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
 import {
   useCallback,
   useEffect,
@@ -14,10 +11,11 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth";
-import {
-  contactInquiriesQueryPrefix,
-  contactQueryKey,
-} from "@/features/contacts";
+import { contactQueryKey } from "@/features/contacts";
+import type {
+  QueueRealtimeInvalidation,
+  RealtimeChange,
+} from "@/shared/realtime/types";
 
 import {
   conversationQueryKey,
@@ -32,15 +30,13 @@ import {
   notificationSettingsQueryKey,
   unreadChatCountQueryKey,
   updateConversationNotificationSettings,
+  type ChatMessage,
   type Conversation,
   type ConversationNotificationSettings,
   type ConversationNotificationSettingsPage,
+  type ConversationPage,
+  type MessagePage,
 } from "../api/conversations-api";
-import {
-  conversationStreamUrl,
-  ConversationStreamSessionEnded,
-  fetchConversationStream,
-} from "../api/conversation-stream";
 import { MessageToast, type ChatToast } from "../ui/message-toast";
 
 import {
@@ -58,15 +54,6 @@ const messageSoundUrls = [
   "/sounds/message-notification.mp3",
   "/sounds/message-notification.ogg",
 ] as const;
-const maxRetryDelayMs = 30_000;
-
-class RetryConversationStream extends Error {}
-
-function retryDelay(attempt: number): number {
-  const base = Math.min(maxRetryDelayMs, 3_000 * 2 ** Math.min(attempt, 4));
-  return Math.min(maxRetryDelayMs, base + Math.floor(Math.random() * 750));
-}
-
 let audioContext: AudioContext | null = null;
 let messageSound: Promise<AudioBuffer | null> | null = null;
 
@@ -107,8 +94,9 @@ function unlockMessageSound() {
 
 async function playMessageSound() {
   try {
-    unlockMessageSound();
-    if (!audioContext || audioContext.state !== "running") return;
+    audioContext ??= new AudioContext();
+    if (audioContext.state === "suspended") await audioContext.resume();
+    if (audioContext.state !== "running") return;
     const buffer = await loadMessageSound();
     if (!buffer || audioContext.state !== "running") return;
     const source = audioContext.createBufferSource();
@@ -123,48 +111,6 @@ async function playMessageSound() {
   }
 }
 
-function parseEvent(
-  data: string,
-): { conversation_id: string; message_id?: string } | null {
-  try {
-    const value: unknown = JSON.parse(data);
-    if (!value || typeof value !== "object") return null;
-    const event = value as Record<string, unknown>;
-    if (typeof event.conversation_id !== "string") return null;
-    if (event.message_id !== undefined && typeof event.message_id !== "string")
-      return null;
-    return {
-      conversation_id: event.conversation_id,
-      message_id: event.message_id as string | undefined,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function parseSettingsEvent(
-  data: string,
-): ConversationNotificationSettings | null {
-  try {
-    const value: unknown = JSON.parse(data);
-    if (!value || typeof value !== "object") return null;
-    const event = value as Record<string, unknown>;
-    if (
-      typeof event.conversation_id !== "string" ||
-      typeof event.sound_enabled !== "boolean" ||
-      typeof event.notifications_enabled !== "boolean"
-    )
-      return null;
-    return {
-      conversation_id: event.conversation_id,
-      sound_enabled: event.sound_enabled,
-      notifications_enabled: event.notifications_enabled,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function replaceSettings(
   current: ConversationNotificationSettingsPage | undefined,
   updated: ConversationNotificationSettings,
@@ -176,6 +122,89 @@ function replaceSettings(
       ) ?? []),
       updated,
     ],
+  };
+}
+
+function conversationTimeKey(value: string) {
+  const match =
+    /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?(?:Z|\+00:00)$/.exec(
+      value,
+    );
+  return match ? `${match[1]}.${(match[2] ?? "").padEnd(6, "0")}` : null;
+}
+
+function compareConversationOrder(a: Conversation, b: Conversation) {
+  const aTime = conversationTimeKey(a.updated_at);
+  const bTime = conversationTimeKey(b.updated_at);
+  if (!aTime || !bTime) return null;
+  return aTime === bTime
+    ? a.id < b.id
+      ? -1
+      : a.id > b.id
+        ? 1
+        : 0
+    : aTime < bTime
+      ? -1
+      : 1;
+}
+
+function patchConversationPages(
+  current: InfiniteData<ConversationPage>,
+  updated: Conversation,
+): InfiniteData<ConversationPage> | null {
+  if (
+    !current.pages.length ||
+    current.pages.length !== current.pageParams.length
+  )
+    return null;
+  if (current.pages.some((page) => page.items.length === 0)) return null;
+  const rows = current.pages.flatMap((page) => page.items);
+  const first = rows[0];
+  if (!first || (compareConversationOrder(updated, first) ?? -1) < 0)
+    return null;
+
+  let matches = 0;
+  const seen = new Set<string>();
+  for (const page of current.pages) {
+    if (page.items.at(-1)?.id === updated.id) return null;
+    for (const item of page.items) {
+      if (seen.has(item.id)) return null;
+      seen.add(item.id);
+      if (item.id === updated.id) matches += 1;
+    }
+  }
+  if (matches !== 1) return null;
+  for (let index = 1; index < rows.length; index += 1) {
+    const order = compareConversationOrder(rows[index - 1]!, rows[index]!);
+    if (order === null || order < 0) return null;
+  }
+
+  const pages = current.pages.map((page) => ({
+    ...page,
+    items: page.items.filter((item) => item.id !== updated.id),
+  }));
+  pages[0]!.items.unshift(updated);
+  return { ...current, pages };
+}
+
+function patchConversationReadPages(
+  current: InfiniteData<ConversationPage>,
+  updated: Conversation,
+): InfiniteData<ConversationPage> | null {
+  if (current.pages.length !== current.pageParams.length) return null;
+  const matches = current.pages
+    .flatMap((page) => page.items)
+    .filter((item) => item.id === updated.id);
+  if (matches.length !== 1 || matches[0]?.updated_at !== updated.updated_at)
+    return null;
+  return {
+    ...current,
+    pages: current.pages.map((page) => ({
+      ...page,
+      items: page.items.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    })),
   };
 }
 
@@ -198,6 +227,29 @@ export function ChatNotifications({ children }: PropsWithChildren) {
   );
   const failedSettingsRefreshesRef = useRef(new Set<string>());
   const timers = useRef(new Set<number>());
+  const realtimeChangeRef = useRef<
+    (
+      change: RealtimeChange,
+      live: boolean,
+      invalidate: QueueRealtimeInvalidation,
+    ) => void
+  >(() => {});
+  const realtimeReconcileRef = useRef<
+    (invalidate: QueueRealtimeInvalidation) => void
+  >(() => {});
+  const onRealtimeChange = useCallback(
+    (
+      change: RealtimeChange,
+      live: boolean,
+      invalidate: QueueRealtimeInvalidation,
+    ) => realtimeChangeRef.current(change, live, invalidate),
+    [],
+  );
+  const reconcileRealtime = useCallback(
+    (invalidate: QueueRealtimeInvalidation) =>
+      realtimeReconcileRef.current(invalidate),
+    [],
+  );
   const userId = status === "authenticated" ? user?.id : null;
   const settingsKey = notificationSettingsQueryKey(
     workspaceId ?? "",
@@ -352,96 +404,404 @@ export function ChatNotifications({ children }: PropsWithChildren) {
     const activeWorkspaceId = workspaceId;
     if (!userId || !activeWorkspaceId) return;
 
-    const controller = new AbortController();
     const received = new Set<string>();
     const activeTimers = timers.current;
     const activeRefreshes = settingsRefreshesRef.current;
     const activeFailedRefreshes = failedSettingsRefreshesRef.current;
+    const pendingMessageRefreshes = new Map<
+      string,
+      Promise<ChatMessage | null>
+    >();
+    const pendingConversationRefreshes = new Map<
+      string,
+      Promise<Conversation | null>
+    >();
+    const queuedMessageSummaries = new Map<
+      string,
+      {
+        timer: number | null;
+        running: boolean;
+        dirty: boolean;
+        mode: "message" | "read";
+        invalidate: QueueRealtimeInvalidation;
+      }
+    >();
+    const toastConversationLookups = new Map<
+      string,
+      { promise: Promise<Conversation>; expiresAt: number | null }
+    >();
+    const conversationRefreshVersions = new Map<string, number>();
+    let conversationRefreshSerial = 0;
     let active = true;
-    let retryAttempt = 0;
-    let connectedAt = 0;
-
-    function invalidateConversation(conversationId?: string) {
-      void queryClient.invalidateQueries({
-        queryKey: conversationsQueryKey(activeWorkspaceId!),
-        exact: Boolean(conversationId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: unreadChatCountQueryKey(activeWorkspaceId!),
-      });
+    function invalidateConversation(
+      invalidate: QueueRealtimeInvalidation,
+      conversationId?: string,
+      includeMessages = true,
+    ) {
+      invalidate(conversationsQueryKey(activeWorkspaceId!), true);
+      invalidate(unreadChatCountQueryKey(activeWorkspaceId!), true);
       if (conversationId) {
-        void queryClient.invalidateQueries({
-          queryKey: messagesQueryKey(activeWorkspaceId!, conversationId),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: conversationQueryKey(activeWorkspaceId!, conversationId),
-        });
+        invalidate(
+          conversationQueryKey(activeWorkspaceId!, conversationId),
+          true,
+        );
+        if (includeMessages) {
+          invalidate(
+            messagesQueryKey(activeWorkspaceId!, conversationId),
+            true,
+          );
+        }
       }
     }
 
-    function invalidateProfile(conversationId: string) {
+    function invalidateProfile(
+      invalidate: QueueRealtimeInvalidation,
+      conversationId: string,
+    ) {
       const detailKey = conversationQueryKey(
         activeWorkspaceId!,
         conversationId,
       );
       const conversation = queryClient.getQueryData<Conversation>(detailKey);
-      void queryClient.invalidateQueries({
-        queryKey: conversationsQueryKey(activeWorkspaceId!),
-        exact: true,
-      });
-      void queryClient.invalidateQueries({ queryKey: detailKey, exact: true });
-      void queryClient.invalidateQueries({
-        queryKey: messagesQueryKey(activeWorkspaceId!, conversationId),
-        exact: true,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: messageAuthorsQueryKey(activeWorkspaceId!, conversationId),
-      });
+      invalidate(conversationsQueryKey(activeWorkspaceId!), true);
+      invalidate(detailKey, true);
+      invalidate(messagesQueryKey(activeWorkspaceId!, conversationId), true);
+      invalidate(messageAuthorsQueryKey(activeWorkspaceId!, conversationId));
       if (conversation?.contact_id) {
-        void queryClient.invalidateQueries({
-          queryKey: contactQueryKey(
-            activeWorkspaceId!,
-            conversation.contact_id,
-          ),
-          exact: true,
-        });
+        invalidate(
+          contactQueryKey(activeWorkspaceId!, conversation.contact_id),
+          true,
+        );
       }
     }
 
     function invalidateEditedMessage(
+      invalidate: QueueRealtimeInvalidation,
       conversationId: string,
       messageId?: string,
     ) {
-      void queryClient.invalidateQueries({
+      invalidate(conversationsQueryKey(activeWorkspaceId!), true);
+      invalidate(
+        conversationQueryKey(activeWorkspaceId!, conversationId),
+        true,
+      );
+      invalidate(messagesQueryKey(activeWorkspaceId!, conversationId), true);
+      invalidate(
+        messageRevisionsQueryKey(activeWorkspaceId!, conversationId, messageId),
+        Boolean(messageId),
+      );
+    }
+
+    function cachedConversation(conversationId: string) {
+      const detail = queryClient.getQueryData<Conversation>(
+        conversationQueryKey(activeWorkspaceId!, conversationId),
+      );
+      if (detail) return detail;
+      const list = queryClient.getQueryData<InfiniteData<ConversationPage>>(
+        conversationsQueryKey(activeWorkspaceId!),
+      );
+      return list?.pages
+        .flatMap((page) => page.items)
+        .find((item) => item.id === conversationId);
+    }
+
+    function cachedMessage(conversationId: string, messageId: string) {
+      const messages = queryClient.getQueryData<InfiniteData<MessagePage>>(
+        messagesQueryKey(activeWorkspaceId!, conversationId),
+      );
+      return messages?.pages[0]?.items.find((item) => item.id === messageId);
+    }
+
+    function conversationForToast(conversationId: string) {
+      const existing = toastConversationLookups.get(conversationId);
+      if (
+        existing &&
+        (existing.expiresAt === null || existing.expiresAt > Date.now())
+      )
+        return existing.promise;
+      const entry: {
+        promise: Promise<Conversation>;
+        expiresAt: number | null;
+      } = { promise: getConversation(conversationId), expiresAt: null };
+      toastConversationLookups.set(conversationId, entry);
+      void entry.promise.then(
+        () => {
+          // Share metadata within a message burst, without holding a stale
+          // conversation title after a later profile change.
+          entry.expiresAt = Date.now() + 750;
+          window.setTimeout(() => {
+            if (toastConversationLookups.get(conversationId) === entry)
+              toastConversationLookups.delete(conversationId);
+          }, 750);
+        },
+        () => {
+          if (toastConversationLookups.get(conversationId) === entry)
+            toastConversationLookups.delete(conversationId);
+        },
+      );
+      return entry.promise;
+    }
+
+    function refreshConversationSummary(
+      conversationId: string,
+      invalidate: QueueRealtimeInvalidation,
+      mode: "message" | "read",
+    ) {
+      const listKey = conversationsQueryKey(activeWorkspaceId!);
+      const detailKey = conversationQueryKey(
+        activeWorkspaceId!,
+        conversationId,
+      );
+      const fallback = () => {
+        invalidate(listKey, true);
+        invalidate(detailKey, true);
+      };
+      const version = ++conversationRefreshSerial;
+      conversationRefreshVersions.set(conversationId, version);
+      const listQuery = queryClient.getQueryCache().find({
+        queryKey: listKey,
+        exact: true,
+      });
+      if (
+        !listQuery ||
+        listQuery.getObserversCount() === 0 ||
+        listQuery.state.fetchStatus === "fetching" ||
+        !listQuery.state.data
+      ) {
+        conversationRefreshVersions.delete(conversationId);
+        pendingConversationRefreshes.delete(conversationId);
+        fallback();
+        return null;
+      }
+      const originalList = listQuery.state.data;
+      const originalDetail = queryClient.getQueryData(detailKey);
+      const refresh = getConversation(conversationId).then(
+        (updated): Conversation | null => {
+          if (
+            !active ||
+            conversationRefreshVersions.get(conversationId) !== version
+          )
+            return null;
+          if (updated.id !== conversationId) {
+            fallback();
+            return null;
+          }
+          const latestQuery = queryClient.getQueryCache().find({
+            queryKey: listKey,
+            exact: true,
+          });
+          const current =
+            queryClient.getQueryData<InfiniteData<ConversationPage>>(listKey);
+          const patched =
+            current &&
+            (mode === "message"
+              ? patchConversationPages(current, updated)
+              : patchConversationReadPages(current, updated));
+          if (
+            !latestQuery ||
+            latestQuery.getObserversCount() === 0 ||
+            latestQuery.state.fetchStatus === "fetching" ||
+            current !== originalList ||
+            !patched
+          ) {
+            fallback();
+            return updated;
+          }
+          queryClient.setQueryData(listKey, patched);
+          const detailQuery = queryClient.getQueryCache().find({
+            queryKey: detailKey,
+            exact: true,
+          });
+          if (
+            detailQuery?.state.fetchStatus === "fetching" ||
+            detailQuery?.state.data !== originalDetail
+          ) {
+            invalidate(detailKey, true);
+          } else if (detailQuery) {
+            queryClient.setQueryData(detailKey, updated);
+          }
+          return updated;
+        },
+        (): null => {
+          if (
+            active &&
+            conversationRefreshVersions.get(conversationId) === version
+          ) {
+            fallback();
+          }
+          return null;
+        },
+      );
+      pendingConversationRefreshes.set(conversationId, refresh);
+      const clearRefresh = () => {
+        if (pendingConversationRefreshes.get(conversationId) === refresh) {
+          pendingConversationRefreshes.delete(conversationId);
+          if (conversationRefreshVersions.get(conversationId) === version) {
+            conversationRefreshVersions.delete(conversationId);
+          }
+        }
+      };
+      void refresh.then(clearRefresh, clearRefresh);
+      return refresh;
+    }
+
+    function queueConversationSummary(
+      conversationId: string,
+      invalidate: QueueRealtimeInvalidation,
+      mode: "message" | "read",
+    ) {
+      const listQuery = queryClient.getQueryCache().find({
         queryKey: conversationsQueryKey(activeWorkspaceId!),
         exact: true,
       });
-      void queryClient.invalidateQueries({
-        queryKey: conversationQueryKey(activeWorkspaceId!, conversationId),
-        exact: true,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: messagesQueryKey(activeWorkspaceId!, conversationId),
-        exact: true,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: messageRevisionsQueryKey(
-          activeWorkspaceId!,
-          conversationId,
-          messageId,
-        ),
-        exact: Boolean(messageId),
-      });
+      if (
+        !listQuery ||
+        listQuery.getObserversCount() === 0 ||
+        listQuery.state.fetchStatus === "fetching" ||
+        !listQuery.state.data
+      ) {
+        // An inactive list needs no detail GET. A reading list will refetch
+        // after its current request rather than racing a cache patch.
+        refreshConversationSummary(conversationId, invalidate, mode);
+        return;
+      }
+      let queued = queuedMessageSummaries.get(conversationId);
+      if (!queued) {
+        queued = {
+          timer: null,
+          running: false,
+          dirty: false,
+          mode,
+          invalidate,
+        };
+        queuedMessageSummaries.set(conversationId, queued);
+      } else {
+        queued.invalidate = invalidate;
+        // A message can change list order; a read only changes this user's
+        // unread count. Preserve the stronger patch mode for a mixed batch.
+        if (mode === "message") queued.mode = "message";
+        if (queued.running) queued.dirty = true;
+      }
+      if (queued.timer !== null || queued.running) return;
+      const schedule = () => {
+        queued.timer = window.setTimeout(() => {
+          queued.timer = null;
+          queued.running = true;
+          queued.dirty = false;
+          const refresh = refreshConversationSummary(
+            conversationId,
+            queued.invalidate,
+            queued.mode,
+          );
+          if (!refresh) {
+            queuedMessageSummaries.delete(conversationId);
+            return;
+          }
+          void refresh.then(
+            () => {
+              if (!active) return;
+              queued.running = false;
+              // A later event can change the delivery state of this same
+              // message ID, so an in-flight read needs one trailing read.
+              if (queued.dirty) {
+                schedule();
+              } else {
+                queuedMessageSummaries.delete(conversationId);
+              }
+            },
+            () => {
+              if (!active) return;
+              queued.invalidate(
+                conversationsQueryKey(activeWorkspaceId!),
+                true,
+              );
+              queued.invalidate(
+                conversationQueryKey(activeWorkspaceId!, conversationId),
+                true,
+              );
+              queuedMessageSummaries.delete(conversationId);
+            },
+          );
+        }, 120);
+      };
+      schedule();
     }
 
-    function invalidateContactInquiries(conversation: Conversation) {
-      if (!conversation.contact_id) return;
-      void queryClient.invalidateQueries({
-        queryKey: contactInquiriesQueryPrefix(
-          activeWorkspaceId!,
-          conversation.contact_id,
-        ),
-      });
+    function refreshNewMessage(
+      conversationId: string,
+      messageId: string,
+      invalidate: QueueRealtimeInvalidation,
+    ) {
+      const key = messagesQueryKey(activeWorkspaceId!, conversationId);
+      const query = queryClient
+        .getQueryCache()
+        .find({ queryKey: key, exact: true });
+      if (!query || query.getObserversCount() === 0) return;
+      const refresh = (async (): Promise<ChatMessage | null> => {
+        let message: ChatMessage;
+        try {
+          message = await getMessage(conversationId, messageId);
+        } catch {
+          if (active) invalidate(key, true);
+          return null;
+        }
+        if (!active) return message;
+        const currentQuery = queryClient.getQueryCache().find({
+          queryKey: key,
+          exact: true,
+        });
+        if (!currentQuery || currentQuery.getObserversCount() === 0)
+          return message;
+        const data = queryClient.getQueryData<InfiniteData<MessagePage>>(key);
+        const firstPage = data?.pages[0];
+        const first = firstPage?.items[0];
+        const existing = data?.pages
+          .flatMap((page) => page.items)
+          .find((item) => item.id === messageId);
+        // The server's cursor names the oldest row in each page. Adding one
+        // contiguous newest message leaves that cursor valid; gaps, history
+        // reshuffles, and an in-flight list read need a server refetch.
+        const canPatch =
+          firstPage &&
+          currentQuery.state.fetchStatus !== "fetching" &&
+          (existing
+            ? existing.sequence === message.sequence
+            : first
+              ? message.sequence === first.sequence + 1
+              : firstPage.next_cursor === null);
+        if (!canPatch) {
+          invalidate(key, true);
+          return message;
+        }
+        queryClient.setQueryData<InfiniteData<MessagePage>>(key, (previous) =>
+          previous
+            ? {
+                ...previous,
+                pages: previous.pages.map((page, index) => ({
+                  ...page,
+                  items: existing
+                    ? page.items.map((item) =>
+                        item.id === messageId ? message : item,
+                      )
+                    : index === 0
+                      ? [message, ...page.items]
+                      : page.items,
+                })),
+              }
+            : previous,
+        );
+        return message;
+      })();
+      pendingMessageRefreshes.set(messageId, refresh);
+      const clearRefresh = () => {
+        if (pendingMessageRefreshes.get(messageId) === refresh) {
+          pendingMessageRefreshes.delete(messageId);
+        }
+      };
+      void refresh.then(
+        () => clearRefresh(),
+        () => clearRefresh(),
+      );
     }
 
     async function showIncomingToast(
@@ -456,13 +816,6 @@ export function ChatNotifications({ children }: PropsWithChildren) {
 
       for (let attempt = 0; attempt < 3 && active; attempt++) {
         try {
-          const [message, conversation] = await Promise.all([
-            getMessage(conversationId, messageId),
-            getConversation(conversationId),
-          ]);
-          if (!active) return;
-          invalidateContactInquiries(conversation);
-          if (message.direction !== "inbound") return;
           const scope = settingsScope(activeWorkspaceId!, userId!);
           const queryKey = notificationSettingsQueryKey(
             activeWorkspaceId!,
@@ -492,6 +845,29 @@ export function ChatNotifications({ children }: PropsWithChildren) {
             (item) => item.conversation_id === conversationId,
           );
           if (preference?.notifications_enabled === false) return;
+          const refreshingMessage = pendingMessageRefreshes.get(messageId);
+          const refreshingConversation =
+            pendingConversationRefreshes.get(conversationId);
+          const [message, conversation]: [ChatMessage, Conversation] =
+            await Promise.all([
+              refreshingMessage
+                ? refreshingMessage.then(
+                    (value) =>
+                      value ??
+                      cachedMessage(conversationId, messageId) ??
+                      getMessage(conversationId, messageId),
+                  )
+                : (cachedMessage(conversationId, messageId) ??
+                  getMessage(conversationId, messageId)),
+              cachedConversation(conversationId) ??
+                (refreshingConversation
+                  ? refreshingConversation.then(
+                      (value) => value ?? conversationForToast(conversationId),
+                    )
+                  : conversationForToast(conversationId)),
+            ]);
+          if (!active) return;
+          if (message.direction !== "inbound") return;
           const toast: ChatToast = {
             id: message.id,
             conversationId,
@@ -528,121 +904,152 @@ export function ChatNotifications({ children }: PropsWithChildren) {
       received.delete(messageId);
     }
 
-    void fetchEventSource(conversationStreamUrl, {
-      signal: controller.signal,
-      openWhenHidden: true,
-      headers: { accept: EventStreamContentType },
-      fetch: (input, init) =>
-        fetchConversationStream(input, init, activeWorkspaceId),
-      async onopen(response) {
-        if (response.status === 401 || response.status === 403) {
-          throw new ConversationStreamSessionEnded();
+    realtimeReconcileRef.current = (invalidate) => {
+      if (!active) return;
+      invalidateConversation(invalidate);
+      void refreshSettings(activeWorkspaceId!, userId!).catch(() => {});
+    };
+    realtimeChangeRef.current = (change, live, invalidate) => {
+      if (
+        !active ||
+        (change.workspace_id && change.workspace_id !== activeWorkspaceId)
+      )
+        return;
+      if (change.kind === "contact.changed") {
+        toastConversationLookups.clear();
+        invalidate(conversationsQueryKey(activeWorkspaceId!), true);
+        if (change.contact_id) {
+          const details = queryClient.getQueryCache().findAll({
+            queryKey: [...conversationsQueryKey(activeWorkspaceId!), "detail"],
+          });
+          for (const detail of details) {
+            const conversation = detail.state.data as Conversation | undefined;
+            if (conversation?.contact_id !== change.contact_id) continue;
+            invalidate(detail.queryKey, true);
+            invalidate(
+              messagesQueryKey(activeWorkspaceId!, conversation.id),
+              true,
+            );
+            invalidate(
+              messageAuthorsQueryKey(activeWorkspaceId!, conversation.id),
+            );
+          }
         }
-        if (
-          response.status >= 400 &&
-          response.status < 500 &&
-          response.status !== 429
-        ) {
-          throw new ConversationStreamSessionEnded();
-        }
-        if (!response.ok) throw new RetryConversationStream();
-        if (
-          !response.headers
-            .get("content-type")
-            ?.startsWith(EventStreamContentType)
-        ) {
-          throw new ConversationStreamSessionEnded();
-        }
-        connectedAt = Date.now();
-      },
-      onmessage(event) {
-        if (!active) return;
-        if (event.event === "connected") {
-          invalidateConversation();
-          void refreshSettings(activeWorkspaceId!, userId!).catch(() => {});
-          return;
-        }
-        if (event.event === "notification-settings") {
-          const settings = parseSettingsEvent(event.data);
-          if (!settings) return;
-          const signalKey = `${activeWorkspaceId}:${userId}:${settings.conversation_id}`;
+        return;
+      }
+      if (change.kind === "members.changed") {
+        toastConversationLookups.clear();
+        invalidate(conversationsQueryKey(activeWorkspaceId!), true);
+        invalidate([...conversationsQueryKey(activeWorkspaceId!), "detail"]);
+        invalidate([...conversationsQueryKey(activeWorkspaceId!), "messages"]);
+        invalidate([
+          ...conversationsQueryKey(activeWorkspaceId!),
+          "message-authors",
+        ]);
+        return;
+      }
+      if (change.kind === "conversation.settings") {
+        if (change.conversation_id) {
+          const signalKey = `${activeWorkspaceId}:${userId}:${change.conversation_id}`;
           settingsSignalVersions.current.set(
             signalKey,
             (settingsSignalVersions.current.get(signalKey) ?? 0) + 1,
           );
-          // Publication order can differ from commit order across concurrent
-          // updates. Read the committed state instead of trusting a late SSE.
-          void refreshSettings(activeWorkspaceId!, userId!).then(
-            (page) => {
-              if (!active) return;
-              const disabled = new Set(
-                page.items
-                  .filter((item) => !item.notifications_enabled)
-                  .map((item) => item.conversation_id),
-              );
-              if (disabled.size > 0) {
-                setToasts((toasts) =>
-                  toasts.filter((item) => !disabled.has(item.conversationId)),
-                );
-              }
-            },
-            () => {},
-          );
-          return;
         }
-        if (event.event === "profile") {
-          const payload = parseEvent(event.data);
-          if (payload) invalidateProfile(payload.conversation_id);
-          return;
-        }
-        if (event.event === "edit") {
-          const payload = parseEvent(event.data);
-          if (payload)
-            invalidateEditedMessage(
-              payload.conversation_id,
-              payload.message_id,
+        // Concurrent publications may arrive out of commit order. The GET
+        // provides the committed settings before any later toast is shown.
+        void refreshSettings(activeWorkspaceId!, userId!).then(
+          (page) => {
+            if (!active) return;
+            const disabled = new Set(
+              page.items
+                .filter((item) => !item.notifications_enabled)
+                .map((item) => item.conversation_id),
             );
-          return;
+            if (disabled.size > 0) {
+              setToasts((toasts) =>
+                toasts.filter((item) => !disabled.has(item.conversationId)),
+              );
+            }
+          },
+          () => {},
+        );
+        return;
+      }
+      if (!change.conversation_id) return;
+      if (change.kind === "conversation.profile") {
+        toastConversationLookups.delete(change.conversation_id);
+        invalidateProfile(invalidate, change.conversation_id);
+        return;
+      }
+      if (change.kind === "conversation.edit") {
+        invalidateEditedMessage(
+          invalidate,
+          change.conversation_id,
+          change.message_id,
+        );
+        return;
+      }
+      if (
+        change.kind !== "conversation.message" &&
+        change.kind !== "conversation.read" &&
+        change.kind !== "conversation.history"
+      )
+        return;
+      if (change.kind === "conversation.message") {
+        if (change.direction !== "outbound") {
+          invalidate(unreadChatCountQueryKey(activeWorkspaceId!), true);
         }
-        if (
-          event.event !== "message" &&
-          event.event !== "read" &&
-          event.event !== "history"
-        )
-          return;
-        const payload = parseEvent(event.data);
-        if (!payload) return;
-        invalidateConversation(payload.conversation_id);
-        if (event.event === "message" && payload.message_id) {
-          void showIncomingToast(payload.conversation_id, payload.message_id);
-        } else if (event.event === "history" || event.event === "message") {
-          const conversation = queryClient.getQueryData<Conversation>(
-            conversationQueryKey(activeWorkspaceId!, payload.conversation_id),
+        queueConversationSummary(change.conversation_id, invalidate, "message");
+        if (change.message_id) {
+          refreshNewMessage(
+            change.conversation_id,
+            change.message_id,
+            invalidate,
           );
-          if (conversation) invalidateContactInquiries(conversation);
+        } else {
+          invalidate(
+            messagesQueryKey(activeWorkspaceId!, change.conversation_id),
+            true,
+          );
         }
-      },
-      onclose() {
-        throw new RetryConversationStream();
-      },
-      onerror(error) {
-        if (error instanceof ConversationStreamSessionEnded) throw error;
-        if (connectedAt && Date.now() - connectedAt >= 30_000) retryAttempt = 0;
-        connectedAt = 0;
-        return retryDelay(retryAttempt++);
-      },
-    }).catch(() => {
-      // Session and query failures are handled by their owning layers.
-    });
+      } else if (change.kind === "conversation.read") {
+        invalidate(unreadChatCountQueryKey(activeWorkspaceId!), true);
+        queueConversationSummary(change.conversation_id, invalidate, "read");
+      } else {
+        invalidateConversation(
+          invalidate,
+          change.conversation_id,
+          change.kind === "conversation.history",
+        );
+      }
+      if (
+        change.kind === "conversation.message" &&
+        change.message_id &&
+        live &&
+        change.direction !== "outbound"
+      ) {
+        void showIncomingToast(change.conversation_id, change.message_id);
+      }
+    };
 
     return () => {
       active = false;
-      controller.abort();
+      realtimeChangeRef.current = () => {};
+      realtimeReconcileRef.current = () => {};
       setToasts([]);
       activeTimers.forEach((timer) => window.clearTimeout(timer));
       activeTimers.clear();
       activeRefreshes.delete(settingsScope(activeWorkspaceId!, userId!));
       activeFailedRefreshes.delete(settingsScope(activeWorkspaceId!, userId!));
+      pendingMessageRefreshes.clear();
+      pendingConversationRefreshes.clear();
+      queuedMessageSummaries.forEach(({ timer }) => {
+        if (timer !== null) window.clearTimeout(timer);
+      });
+      queuedMessageSummaries.clear();
+      toastConversationLookups.clear();
+      conversationRefreshVersions.clear();
     };
   }, [queryClient, refreshSettings, t, userId, workspaceId]);
 
@@ -658,6 +1065,8 @@ export function ChatNotifications({ children }: PropsWithChildren) {
         getSettings,
         updateSettings,
         isSaving,
+        onRealtimeChange,
+        reconcileRealtime,
       }}
     >
       {children}

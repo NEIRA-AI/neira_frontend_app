@@ -20,12 +20,26 @@ export async function listFunnelInquiries(
   return data;
 }
 
+export async function getInquiry(
+  inquiryId: string,
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<InquirySummary> {
+  const { data } = await api.get<InquirySummary>(
+    `/inquiries/${encodeURIComponent(inquiryId)}`,
+    { workspace: true, workspaceScopeId: workspaceId, signal },
+  );
+  return data;
+}
+
 export async function moveInquiryToStatus(input: {
   inquiryId: string;
   statusId: string;
+  expectedRevision: number;
 }): Promise<InquirySummary> {
   const payload: components["schemas"]["InquiryStatusUpdate"] = {
     status_id: input.statusId,
+    expected_revision: input.expectedRevision,
   };
   const { data } = await api.patch<InquirySummary>(
     `/inquiries/${encodeURIComponent(input.inquiryId)}/status`,

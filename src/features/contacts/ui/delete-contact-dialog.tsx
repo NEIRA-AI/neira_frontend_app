@@ -9,15 +9,19 @@ import type { ContactSummary } from "../api/contacts-api";
 export function DeleteContactDialog({
   contact,
   busy,
+  conflict,
   errorMessage,
   onClose,
   onConfirm,
+  onRefresh,
 }: {
   contact: ContactSummary;
   busy: boolean;
+  conflict: boolean;
   errorMessage: string | null;
   onClose: () => void;
   onConfirm: () => void;
+  onRefresh: () => void;
 }) {
   const { t } = useTranslation("contacts");
 
@@ -61,10 +65,19 @@ export function DeleteContactDialog({
             </p>
           )}
           <div className="mt-6 flex flex-wrap justify-end gap-3">
+            {conflict && (
+              <Button disabled={busy} onClick={onRefresh} variant="outline">
+                {t("refreshContact")}
+              </Button>
+            )}
             <Button disabled={busy} onClick={onClose} variant="ghost">
               {t("cancel")}
             </Button>
-            <Button disabled={busy} onClick={onConfirm} variant="danger">
+            <Button
+              disabled={busy || conflict}
+              onClick={onConfirm}
+              variant="danger"
+            >
               {busy ? t("deleting") : t("delete")}
             </Button>
           </div>

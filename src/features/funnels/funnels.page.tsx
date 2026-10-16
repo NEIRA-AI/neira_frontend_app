@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth";
+import { isRevisionConflict } from "@/shared/api/revision-conflict";
 import { Button } from "@/shared/ui/button";
 
 import type { StatusRead } from "./api/funnels-api";
@@ -41,7 +42,7 @@ function FunnelsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ActiveDialog>(null);
   const [actionError, setActionError] = useState(false);
-  const [moveError, setMoveError] = useState(false);
+  const [moveError, setMoveError] = useState<"conflict" | "other" | null>(null);
   const funnelsQuery = useListFunnels(workspaceId ?? "");
   const makeEntry = useMakeEntryStatus(workspaceId ?? "");
   const reorder = useReorderStatuses(workspaceId ?? "");
@@ -61,7 +62,7 @@ function FunnelsPage() {
   function selectFunnel(id: string) {
     setSelectedId(id);
     setActionError(false);
-    setMoveError(false);
+    setMoveError(null);
     setDialog(null);
   }
 
@@ -96,16 +97,17 @@ function FunnelsPage() {
       inquiry.status_id === status.id
     )
       return;
-    setMoveError(false);
+    setMoveError(null);
     try {
       await moveInquiry.mutateAsync({
         funnelId: funnel.id,
         inquiryId: inquiry.id,
         statusId: status.id,
         statusName: status.name,
+        expectedRevision: inquiry.revision,
       });
-    } catch {
-      setMoveError(true);
+    } catch (error) {
+      setMoveError(isRevisionConflict(error) ? "conflict" : "other");
     }
   }
 
@@ -170,12 +172,28 @@ function FunnelsPage() {
             </p>
           )}
           {moveError && (
-            <p
-              className="mx-4 mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger sm:mx-6 lg:mx-8"
-              role="alert"
-            >
-              {t("moveInquiryError")}
-            </p>
+            <div className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger sm:mx-6 lg:mx-8">
+              <p role="alert">
+                {t(
+                  moveError === "conflict"
+                    ? "moveInquiryConflict"
+                    : "moveInquiryError",
+                )}
+              </p>
+              {moveError === "conflict" && (
+                <Button
+                  onClick={() => {
+                    setMoveError(null);
+                    void inquiriesQuery.refetch();
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <RotateCcw aria-hidden="true" className="size-4" />
+                  {t("refreshInquiries")}
+                </Button>
+              )}
+            </div>
           )}
           {inquiriesQuery.isError && (
             <div className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger sm:mx-6 lg:mx-8">

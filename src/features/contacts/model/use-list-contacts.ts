@@ -9,6 +9,5 @@ export function useListContacts(workspaceId: string, search: string) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: Boolean(workspaceId),
-    refetchInterval: 60_000,
   });
 }

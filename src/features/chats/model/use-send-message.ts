@@ -2,7 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import {
+  conversationQueryKey,
   conversationsQueryKey,
+  messagesQueryKey,
   sendFile,
   sendMedia,
   sendMessage,
@@ -127,9 +129,19 @@ export function useSendMessage(workspaceId: string, conversationId: string) {
                 text: input.text,
                 client_message_id: input.clientMessageId,
               }),
-    onSettled: () =>
-      queryClient.invalidateQueries({
+    onSettled: () => {
+      void queryClient.invalidateQueries({
         queryKey: conversationsQueryKey(workspaceId),
-      }),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: conversationQueryKey(workspaceId, conversationId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: messagesQueryKey(workspaceId, conversationId),
+        exact: true,
+      });
+    },
   });
 }

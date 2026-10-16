@@ -20,7 +20,7 @@ export function DeleteFunnelDialog({
   onDeleted: () => void;
 }) {
   const { t } = useTranslation("funnels");
-  const remove = useDeleteFunnel();
+  const remove = useDeleteFunnel(workspaceId);
   const impact = useFunnelDeletionImpact(workspaceId, funnel.id);
   const errorKey = deletionErrorKey(remove.error);
 

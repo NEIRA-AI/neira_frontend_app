@@ -310,14 +310,14 @@ export async function markMessagesRead(
   conversationId: string,
   messageIds: string[],
   signal?: AbortSignal,
-): Promise<number> {
+): Promise<ReadResult> {
   const request: ReadRequest = { message_ids: messageIds };
   const { data } = await api.post<ReadResult>(
     `/conversations/${encodeURIComponent(conversationId)}/read`,
     request,
     { workspace: true, signal },
   );
-  return data.unread_count;
+  return data;
 }
 
 export function messageText(message: ChatMessage | null): string {
