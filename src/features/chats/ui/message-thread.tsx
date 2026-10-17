@@ -930,7 +930,7 @@ export function MessageThread({
               url={conversation.avatar_url}
             />
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-semibold text-ink sm:text-base">
+              <h2 className="min-w-0 text-sm font-semibold text-ink sm:text-base">
                 <button
                   aria-controls={
                     isPanelOpen
@@ -940,7 +940,7 @@ export function MessageThread({
                       : undefined
                   }
                   aria-expanded={isPanelOpen}
-                  className="max-w-full cursor-pointer truncate rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  className="max-w-full cursor-pointer truncate rounded text-left focus-visible:outline-none focus-visible:underline focus-visible:decoration-brand focus-visible:decoration-2 focus-visible:underline-offset-4"
                   onClick={(event) => onToggleContactPanel(event.currentTarget)}
                   type="button"
                 >
@@ -1099,7 +1099,7 @@ export function MessageThread({
                   {groupMessagesForDisplay(displayedMessages).map((group) => (
                     <li className="relative" key={`${group.kind}:${group.key}`}>
                       {group.kind === "day" && (
-                        <div className="sticky top-0 z-10 mb-3 flex justify-center bg-page py-2">
+                        <div className="pointer-events-none sticky top-0 z-10 mb-3 flex justify-center py-2">
                           <span className="rounded-full border border-line bg-surface/95 px-3 py-1 text-xs font-medium text-muted-strong shadow-sm backdrop-blur-sm">
                             {dayFormat.format(
                               new Date(group.messages[0].occurred_at),

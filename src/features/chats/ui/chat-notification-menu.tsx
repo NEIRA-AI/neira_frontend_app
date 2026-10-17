@@ -1,7 +1,7 @@
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Bell, BellOff, Volume2, VolumeX } from "lucide-react";
-import { useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useChatNotificationSettings } from "../model/chat-notification-context";
@@ -97,14 +97,113 @@ export function ChatNotificationMenu({
   open: boolean;
   trigger: ReactElement;
 }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const closedByPointerRef = useRef(false);
+  const openedByMouseRef = useRef(false);
+  const onOpenChangeRef = useRef(onOpenChange);
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    let closeTimer: number | null = null;
+
+    function isPointerInside(rect: DOMRect | undefined, x: number, y: number) {
+      if (!rect) return false;
+      return (
+        x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+      );
+    }
+
+    function isPointerBetween(
+      trigger: DOMRect | undefined,
+      content: DOMRect | undefined,
+      x: number,
+      y: number,
+    ) {
+      if (!trigger || !content) return false;
+      if (x < Math.min(trigger.left, content.left)) return false;
+      if (x > Math.max(trigger.right, content.right)) return false;
+      if (trigger.bottom <= content.top)
+        return y >= trigger.bottom && y <= content.top;
+      if (content.bottom <= trigger.top)
+        return y >= content.bottom && y <= trigger.top;
+      return false;
+    }
+
+    function clearCloseTimer() {
+      if (closeTimer !== null) window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      if (event.pointerType !== "mouse" || !openedByMouseRef.current) return;
+      const trigger = triggerRef.current?.getBoundingClientRect();
+      const content = contentRef.current?.getBoundingClientRect();
+      if (
+        isPointerInside(trigger, event.clientX, event.clientY) ||
+        isPointerInside(content, event.clientX, event.clientY) ||
+        isPointerBetween(trigger, content, event.clientX, event.clientY)
+      ) {
+        clearCloseTimer();
+      } else if (closeTimer === null) {
+        closeTimer = window.setTimeout(() => {
+          closeTimer = null;
+          openedByMouseRef.current = false;
+          closedByPointerRef.current = true;
+          onOpenChangeRef.current(false);
+        }, 180);
+      }
+    }
+
+    function onKeyDown() {
+      openedByMouseRef.current = false;
+      clearCloseTimer();
+    }
+
+    window.addEventListener("pointermove", onPointerMove, true);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove, true);
+      window.removeEventListener("keydown", onKeyDown, true);
+      clearCloseTimer();
+    };
+  }, [open]);
+
   return (
-    <DropdownMenu.Root onOpenChange={onOpenChange} open={open}>
-      <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
+    <DropdownMenu.Root
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) closedByPointerRef.current = false;
+        else openedByMouseRef.current = false;
+        onOpenChange(nextOpen);
+      }}
+      open={open}
+    >
+      <DropdownMenu.Trigger
+        asChild
+        onKeyDown={() => {
+          openedByMouseRef.current = false;
+        }}
+        onPointerDown={(event) => {
+          openedByMouseRef.current = event.pointerType === "mouse";
+        }}
+        ref={triggerRef}
+      >
+        {trigger}
+      </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
           className="z-50 min-w-56 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-xl"
           collisionPadding={8}
+          onCloseAutoFocus={(event) => {
+            if (closedByPointerRef.current) event.preventDefault();
+            closedByPointerRef.current = false;
+          }}
+          ref={contentRef}
           sideOffset={6}
         >
           <ChatNotificationActions

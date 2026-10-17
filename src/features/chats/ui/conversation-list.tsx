@@ -62,7 +62,7 @@ function ConversationRow({
         trigger={
           <NavLink
             aria-current={selected ? "page" : undefined}
-            className={`flex min-w-0 gap-3 border-b border-line px-4 py-4 transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:px-5 ${selected ? "bg-brand-soft" : ""}`}
+            className={`flex min-w-0 gap-3 border-b border-line px-4 py-4 transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:shadow-[inset_3px_0_0_var(--ui-brand)] sm:px-5 ${selected ? "bg-brand-soft" : ""}`}
             to={messageConversationPath(conversation.id)}
           >
             <span className="relative size-10 shrink-0">
