@@ -11,12 +11,14 @@ import {
   ArrowDownToLine,
   ChevronLeft,
   ChevronRight,
+  CircleCheck,
   CircleDot,
   CircleHelp,
   GripVertical,
   MoreHorizontal,
   Pencil,
   Plus,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -46,7 +48,9 @@ type BoardProps = {
   onMakeEntry: (status: StatusRead) => void;
   onReorder: (ids: string[]) => void;
   canMoveInquiries: boolean;
+  canChangeInquiryState: boolean;
   onMoveInquiry: (inquiry: InquirySummary, status: StatusRead) => void;
+  onChangeInquiryState: (inquiry: InquirySummary) => void;
 };
 
 function statusColorStyle(status: StatusRead): CSSProperties {
@@ -129,7 +133,9 @@ type ColumnProps = {
   hasMoreInquiries: boolean;
   canEdit: boolean;
   canMoveInquiries: boolean;
+  canChangeInquiryState: boolean;
   busy: boolean;
+  onChangeInquiryState: (inquiry: InquirySummary) => void;
   onEdit: () => void;
   onDelete: () => void;
   onMakeEntry: () => void;
@@ -173,19 +179,27 @@ function ColumnHint({
 function InquiryCard({
   inquiry,
   canMove,
+  canChangeState,
   busy,
+  onChangeState,
 }: {
   inquiry: InquirySummary;
   canMove: boolean;
+  canChangeState: boolean;
   busy: boolean;
+  onChangeState: () => void;
 }) {
   const { t } = useTranslation("funnels");
   const contactName = inquiry.contact_name.trim() || t("unnamedContact");
+  const isOpen = inquiry.state === "open";
+  const actionCount = Number(canMove && isOpen) + Number(canChangeState);
+  const actionPadding =
+    actionCount === 2 ? "pr-16" : actionCount === 1 ? "pr-10" : "";
   const { ref, handleRef, isDragging } = useDraggable({
     id: `inquiry:${inquiry.id}`,
     type: "inquiry",
     data: { statusId: inquiry.status_id },
-    disabled: !canMove || busy,
+    disabled: !canMove || !isOpen || busy,
   });
 
   return (
@@ -194,7 +208,7 @@ function InquiryCard({
       ref={ref}
     >
       <Link
-        className={`block rounded-xl p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${canMove ? "pr-9" : ""}`}
+        className={`block rounded-xl p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${actionPadding}`}
         to={contactDetailsPath(inquiry.contact_id)}
       >
         <div className="flex min-w-0 items-start gap-2.5">
@@ -211,19 +225,55 @@ function InquiryCard({
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
               {inquiry.last_message_text?.trim() || t("noMessage")}
             </p>
+            {!isOpen && (
+              <span className="mt-2 inline-flex rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium text-muted">
+                {t("closedInquiry")}
+              </span>
+            )}
           </div>
         </div>
       </Link>
-      {canMove && (
+      {canMove && isOpen && (
         <button
           aria-label={t("moveInquiry", { name: contactName })}
-          className="absolute top-2 right-1.5 flex size-7 cursor-grab touch-none items-center justify-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+          className={`absolute top-2 ${canChangeState ? "right-9" : "right-1.5"} flex size-7 cursor-grab touch-none items-center justify-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none`}
           disabled={busy}
           ref={handleRef}
           type="button"
         >
           <GripVertical aria-hidden="true" className="size-4" />
         </button>
+      )}
+      {canChangeState && (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            aria-label={t("inquiryActions", { name: contactName })}
+            className="absolute top-2 right-1.5 flex size-7 items-center justify-center rounded-lg text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={busy}
+            type="button"
+          >
+            <MoreHorizontal aria-hidden="true" className="size-4" />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              className="z-40 min-w-48 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-lg"
+              sideOffset={5}
+            >
+              <DropdownMenu.Item
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none data-highlighted:bg-brand-soft"
+                onSelect={onChangeState}
+              >
+                {isOpen ? (
+                  <CircleCheck aria-hidden="true" className="size-4 shrink-0" />
+                ) : (
+                  <RotateCcw aria-hidden="true" className="size-4 shrink-0" />
+                )}
+                {t(isOpen ? "closeInquiry" : "reopenInquiry")}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       )}
     </div>
   );
@@ -239,7 +289,9 @@ function StatusColumn({
   hasMoreInquiries,
   canEdit,
   canMoveInquiries,
+  canChangeInquiryState,
   busy,
+  onChangeInquiryState,
   onEdit,
   onDelete,
   onMakeEntry,
@@ -322,9 +374,11 @@ function StatusColumn({
         {inquiries.map((inquiry) => (
           <InquiryCard
             busy={busy}
+            canChangeState={canChangeInquiryState}
             canMove={canMoveInquiries}
             inquiry={inquiry}
             key={inquiry.id}
+            onChangeState={() => onChangeInquiryState(inquiry)}
           />
         ))}
         {inquiries.length === 0 && (
@@ -392,7 +446,9 @@ export function FunnelBoard({
   onMakeEntry,
   onReorder,
   canMoveInquiries,
+  canChangeInquiryState,
   onMoveInquiry,
+  onChangeInquiryState,
 }: BoardProps) {
   const { t } = useTranslation("funnels");
   const scrollId = useId();
@@ -404,6 +460,8 @@ export function FunnelBoard({
   const others = statuses
     .filter((status) => !status.is_entry)
     .sort((a, b) => a.position - b.position);
+  const hasMovableInquiries =
+    canMoveInquiries && inquiries.some((inquiry) => inquiry.state === "open");
 
   const inquiriesByStatus = new Map<string, InquirySummary[]>();
   for (const inquiry of inquiries) {
@@ -484,13 +542,10 @@ export function FunnelBoard({
         <div aria-hidden="true" className="shrink-0 px-4 sm:px-6 lg:px-8">
           <div className="border-t border-line" />
         </div>
-        {(canEdit && others.length > 1) ||
-        (canMoveInquiries && inquiries.length > 0) ? (
+        {(canEdit && others.length > 1) || hasMovableInquiries ? (
           <div className="shrink-0 space-y-1 px-4 pt-4 text-xs text-muted sm:px-6 lg:px-8">
             {canEdit && others.length > 1 && <p>{t("dragHelp")}</p>}
-            {canMoveInquiries && inquiries.length > 0 && (
-              <p>{t("dragInquiryHelp")}</p>
-            )}
+            {hasMovableInquiries && <p>{t("dragInquiryHelp")}</p>}
           </div>
         ) : null}
         <DragDropProvider
@@ -509,7 +564,11 @@ export function FunnelBoard({
               const status = statuses.find(
                 (item) => `status-drop:${item.id}` === target?.id,
               );
-              if (inquiry && status && inquiry.status_id !== status.id) {
+              if (
+                inquiry?.state === "open" &&
+                status &&
+                inquiry.status_id !== status.id
+              ) {
                 onMoveInquiry(inquiry, status);
               }
               return;
@@ -534,6 +593,7 @@ export function FunnelBoard({
                   busy={busy}
                   canEdit={canEdit}
                   canMoveInquiries={canMoveInquiries}
+                  canChangeInquiryState={canChangeInquiryState}
                   inquiries={columnInquiries(entry.id)}
                   inquiryCount={columnCount(entry.id)}
                   inquiriesLoading={inquiriesLoading}
@@ -542,6 +602,7 @@ export function FunnelBoard({
                   onDelete={() => onDelete(entry)}
                   onEdit={() => onEdit(entry)}
                   onMakeEntry={() => onMakeEntry(entry)}
+                  onChangeInquiryState={onChangeInquiryState}
                   status={entry}
                   total={statuses.length}
                 />
@@ -551,6 +612,7 @@ export function FunnelBoard({
                   busy={busy}
                   canEdit={canEdit}
                   canMoveInquiries={canMoveInquiries}
+                  canChangeInquiryState={canChangeInquiryState}
                   inquiries={columnInquiries(status.id)}
                   inquiryCount={columnCount(status.id)}
                   inquiriesLoading={inquiriesLoading}
@@ -561,6 +623,7 @@ export function FunnelBoard({
                   onDelete={() => onDelete(status)}
                   onEdit={() => onEdit(status)}
                   onMakeEntry={() => onMakeEntry(status)}
+                  onChangeInquiryState={onChangeInquiryState}
                   status={status}
                   total={statuses.length}
                 />

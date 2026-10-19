@@ -6,6 +6,10 @@ const ru = {
   kanbanView: "Канбан",
   tableView: "Таблица",
   searchAppeals: "Поиск обращений",
+  inquiryFilter: "Фильтр обращений",
+  allInquiries: "Все",
+  openInquiries: "Открытые",
+  closedInquiries: "Закрытые",
   manualCreationUnavailable: "Ручное создание обращений пока недоступно",
   tableViewUnavailable: "Табличный режим пока недоступен",
   searchUnavailable: "Поиск обращений пока недоступен",
@@ -24,6 +28,18 @@ const ru = {
     "Перетащите за заголовок колонки или используйте пробел и стрелки для изменения порядка.",
   dragInquiryHelp: "Перетащите обращение за значок на карточке в нужный этап.",
   moveInquiry: "Переместить обращение контакта «{{name}}»",
+  inquiryActions: "Действия с обращением контакта «{{name}}»",
+  closeInquiry: "Закрыть обращение",
+  reopenInquiry: "Открыть повторно",
+  closedInquiry: "Закрыто",
+  changeInquiryStateError:
+    "Не удалось изменить состояние обращения. Попробуйте ещё раз.",
+  changeInquiryStateConflict:
+    "Обращение изменилось в другой сессии. Обновите доску перед повторной попыткой.",
+  reopenInquiryAlreadyOpen:
+    "Нельзя повторно открыть обращение: для этого контакта и диалога уже есть открытое обращение.",
+  reopenInquiryRouteUnavailable:
+    "Нельзя повторно открыть обращение: его воронка или этап больше недоступны.",
   moveInquiryError: "Не удалось переместить обращение. Попробуйте ещё раз.",
   moveInquiryConflict:
     "Обращение изменилось в другой сессии. Обновите доску перед повторной попыткой.",
@@ -108,6 +124,10 @@ const en = {
   kanbanView: "Kanban",
   tableView: "Table",
   searchAppeals: "Search conversations",
+  inquiryFilter: "Filter inquiries",
+  allInquiries: "All",
+  openInquiries: "Open",
+  closedInquiries: "Closed",
   manualCreationUnavailable: "Manual inquiry creation is not available yet",
   tableViewUnavailable: "Table view is not available yet",
   searchUnavailable: "Inquiry search is not available yet",
@@ -126,6 +146,18 @@ const en = {
     "Drag a column header or use Space and arrow keys to change the order.",
   dragInquiryHelp: "Drag a card by its handle into another stage.",
   moveInquiry: "Move inquiry for contact “{{name}}”",
+  inquiryActions: "Actions for inquiry with “{{name}}”",
+  closeInquiry: "Close inquiry",
+  reopenInquiry: "Reopen inquiry",
+  closedInquiry: "Closed",
+  changeInquiryStateError:
+    "Could not change the inquiry state. Please try again.",
+  changeInquiryStateConflict:
+    "The inquiry changed in another session. Refresh the board before trying again.",
+  reopenInquiryAlreadyOpen:
+    "This inquiry cannot be reopened because this contact and conversation already have an open inquiry.",
+  reopenInquiryRouteUnavailable:
+    "This inquiry cannot be reopened because its funnel or stage is no longer available.",
   moveInquiryError: "Could not move the inquiry. Please try again.",
   moveInquiryConflict:
     "The inquiry changed in another session. Refresh the board before trying again.",

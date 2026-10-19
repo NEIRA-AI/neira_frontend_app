@@ -1017,6 +1017,23 @@ export interface paths {
     patch: operations["update_inquiry_status_api_v1_inquiries__inquiry_id__status_patch"];
     trace?: never;
   };
+  "/api/v1/inquiries/{inquiry_id}/state": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Inquiry State */
+    patch: operations["update_inquiry_state_api_v1_inquiries__inquiry_id__state_patch"];
+    trace?: never;
+  };
   "/api/v1/conversations": {
     parameters: {
       query?: never;
@@ -2283,6 +2300,16 @@ export interface components {
         [key: string]: number;
       };
     };
+    /** InquiryStateUpdate */
+    InquiryStateUpdate: {
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "open" | "closed";
+      /** Expected Revision */
+      expected_revision: number;
+    };
     /** InquiryStatusUpdate */
     InquiryStatusUpdate: {
       /**
@@ -2330,6 +2357,8 @@ export interface components {
        * Format: date-time
        */
       opened_at: string;
+      /** Closed At */
+      closed_at: string | null;
       /** Last Message Text */
       last_message_text: string | null;
     };
@@ -5055,6 +5084,43 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["InquiryStatusUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InquirySummary"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_inquiry_state_api_v1_inquiries__inquiry_id__state_patch: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        inquiry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InquiryStateUpdate"];
       };
     };
     responses: {

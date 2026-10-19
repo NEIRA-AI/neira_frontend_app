@@ -13,12 +13,15 @@ import { useTranslation } from "react-i18next";
 import { Select } from "@/shared/ui/select";
 
 import type { FunnelRead } from "../api/funnels-api";
+import type { InquiryFilter } from "../api/inquiries-api";
 
 export function FunnelToolbar({
   funnels,
   funnel,
   canEdit,
+  inquiryFilter,
   onSelect,
+  onInquiryFilterChange,
   onCreateFunnel,
   onConfigureFunnel,
   onDeleteFunnel,
@@ -26,7 +29,9 @@ export function FunnelToolbar({
   funnels: FunnelRead[];
   funnel: FunnelRead;
   canEdit: boolean;
+  inquiryFilter: InquiryFilter;
   onSelect: (id: string) => void;
+  onInquiryFilterChange: (filter: InquiryFilter) => void;
   onCreateFunnel: () => void;
   onConfigureFunnel: () => void;
   onDeleteFunnel: () => void;
@@ -124,6 +129,21 @@ export function FunnelToolbar({
             </button>
           </span>
         </div>
+        <Select
+          ariaLabel={t("inquiryFilter")}
+          className="min-h-9 w-full sm:w-40"
+          onValueChange={(value) => {
+            if (value === "all" || value === "open" || value === "closed") {
+              onInquiryFilterChange(value);
+            }
+          }}
+          options={[
+            { value: "all", label: t("allInquiries") },
+            { value: "open", label: t("openInquiries") },
+            { value: "closed", label: t("closedInquiries") },
+          ]}
+          value={inquiryFilter}
+        />
         <div className="relative ml-auto w-full sm:w-72 lg:w-96">
           <Search
             aria-hidden="true"

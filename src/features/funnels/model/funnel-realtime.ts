@@ -8,7 +8,7 @@ import type {
 
 import { funnelsQueryKey } from "../api/funnels-api";
 import {
-  funnelInquiriesQueryKey,
+  funnelInquiriesQueryPrefix,
   getInquiry,
   type InquiryPage,
   type InquirySummary,
@@ -54,15 +54,15 @@ export async function refreshInquiryActivity(
     // A create may still be refetching its list when the next message lands.
     // Re-read only those active lists once so the first card has a fresh preview.
     if (recentlyCreated?.funnelId) {
-      const board = queryClient.getQueryCache().find({
-        queryKey: funnelInquiriesQueryKey(
+      for (const board of queryClient.getQueryCache().findAll({
+        queryKey: funnelInquiriesQueryPrefix(
           workspaceId,
           recentlyCreated.funnelId,
         ),
-        exact: true,
-      });
-      if (board && board.getObserversCount() > 0) {
-        invalidate(board.queryKey, true);
+      })) {
+        if (board.getObserversCount() > 0 && board.queryKey[4] !== "closed") {
+          invalidate(board.queryKey, true);
+        }
       }
     }
     if (recentlyCreated?.contactId) {
@@ -148,7 +148,7 @@ export function handleFunnelRealtimeChange(
     for (const query of queryClient.getQueryCache().findAll({
       queryKey: ["private", "inquiries", workspaceId],
     })) {
-      if (query.queryKey[4] !== "open" || query.getObserversCount() === 0)
+      if (query.queryKey[3] === "contact" || query.getObserversCount() === 0)
         continue;
       const data = query.state.data as InfiniteData<InquiryPage> | undefined;
       if (
@@ -172,7 +172,7 @@ export function handleFunnelRealtimeChange(
   }
 
   if (change.funnel_id) {
-    invalidate(funnelInquiriesQueryKey(workspaceId, change.funnel_id), true);
+    invalidate(funnelInquiriesQueryPrefix(workspaceId, change.funnel_id));
   } else {
     invalidate(["private", "inquiries", workspaceId]);
   }

@@ -5,7 +5,9 @@ import { contactInquiriesQueryPrefix } from "@/features/contacts";
 
 import {
   funnelInquiriesQueryKey,
+  funnelInquiriesQueryPrefix,
   moveInquiryToStatus,
+  type InquiryFilter,
   type InquiryPage,
 } from "../api/inquiries-api";
 
@@ -15,6 +17,7 @@ type MoveInquiryInput = {
   statusId: string;
   statusName: string;
   expectedRevision: number;
+  filter: InquiryFilter;
 };
 
 type InquiryPages = InfiniteData<InquiryPage, string | null>;
@@ -26,7 +29,11 @@ export function useMoveInquiry(workspaceId: string) {
     mutationFn: ({ inquiryId, statusId, expectedRevision }: MoveInquiryInput) =>
       moveInquiryToStatus({ inquiryId, statusId, expectedRevision }),
     onMutate: async (input: MoveInquiryInput) => {
-      const key = funnelInquiriesQueryKey(workspaceId, input.funnelId);
+      const key = funnelInquiriesQueryKey(
+        workspaceId,
+        input.funnelId,
+        input.filter,
+      );
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<InquiryPages>(key);
       const currentInquiry = previous?.pages
@@ -75,8 +82,7 @@ export function useMoveInquiry(workspaceId: string) {
     },
     onSettled: (_data, _error, input, context) => {
       void queryClient.invalidateQueries({
-        queryKey: funnelInquiriesQueryKey(workspaceId, input.funnelId),
-        exact: true,
+        queryKey: funnelInquiriesQueryPrefix(workspaceId, input.funnelId),
       });
       if (context?.contactId) {
         void queryClient.invalidateQueries({
