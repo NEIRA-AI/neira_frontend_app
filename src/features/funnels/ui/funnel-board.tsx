@@ -209,7 +209,7 @@ function InquiryCard({
     >
       <Link
         className={`block rounded-xl p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${actionPadding}`}
-        to={contactDetailsPath(inquiry.contact_id)}
+        to={`${contactDetailsPath(inquiry.contact_id)}#inquiry-${inquiry.id}`}
       >
         <div className="flex min-w-0 items-start gap-2.5">
           <span

@@ -1428,6 +1428,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Notes */
+    get: operations["list_notes_api_v1_notes_get"];
+    put?: never;
+    /** Create Note */
+    post: operations["create_note_api_v1_notes_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notes/{note_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Note */
+    delete: operations["delete_note_api_v1_notes__note_id__delete"];
+    options?: never;
+    head?: never;
+    /** Update Note */
+    patch: operations["update_note_api_v1_notes__note_id__patch"];
+    trace?: never;
+  };
   "/api/v1/events/state": {
     parameters: {
       query?: never;
@@ -2515,6 +2551,79 @@ export interface components {
       members: components["schemas"]["MemberSummary"][];
       /** Invitations */
       invitations: components["schemas"]["InvitationSummary"][];
+    };
+    /** NoteAuthor */
+    NoteAuthor: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+    };
+    /** NoteCreate */
+    NoteCreate: {
+      /** Text */
+      text: string;
+      /**
+       * Target Type
+       * @enum {string}
+       */
+      target_type: "contact" | "conversation" | "inquiry";
+      /**
+       * Target Id
+       * Format: uuid
+       */
+      target_id: string;
+    };
+    /** NotePage */
+    NotePage: {
+      /** Items */
+      items: components["schemas"]["NoteRead"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** NoteRead */
+    NoteRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Target Type
+       * @enum {string}
+       */
+      target_type: "contact" | "conversation" | "inquiry";
+      /**
+       * Target Id
+       * Format: uuid
+       */
+      target_id: string;
+      /** Text */
+      text: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /** Revision */
+      revision: number;
+      author: components["schemas"]["NoteAuthor"];
+      last_editor: components["schemas"]["NoteAuthor"] | null;
+    };
+    /** NoteUpdate */
+    NoteUpdate: {
+      /** Text */
+      text: string;
+      /** Expected Revision */
+      expected_revision: number;
     };
     /** NotificationList */
     NotificationList: {
@@ -6017,6 +6126,147 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_notes_api_v1_notes_get: {
+    parameters: {
+      query: {
+        target_type: "contact" | "conversation" | "inquiry";
+        target_id: string;
+        limit?: number;
+        cursor?: string | null;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotePage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_note_api_v1_notes_post: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NoteCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NoteRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_note_api_v1_notes__note_id__delete: {
+    parameters: {
+      query: {
+        expected_revision: number;
+      };
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        note_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_note_api_v1_notes__note_id__patch: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Neira-Workspace-Id": string;
+      };
+      path: {
+        note_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NoteUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NoteRead"];
+        };
       };
       /** @description Validation Error */
       422: {

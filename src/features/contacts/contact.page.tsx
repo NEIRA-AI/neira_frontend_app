@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   MessageSquareText,
   RotateCcw,
+  StickyNote,
   UserRound,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +13,7 @@ import { Link, useLocation, useParams } from "react-router";
 
 import { useAuth } from "@/features/auth";
 import { channelProviders } from "@/features/channels";
+import { NotesSection } from "@/features/notes";
 import { messageConversationPath, ROUTES } from "@/shared/config/routes";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -19,9 +21,47 @@ import { Button } from "@/shared/ui/button";
 import type { ContactDetail } from "./api/contacts-api";
 import { useContact } from "./model/use-contact";
 import { useContactInquiries } from "./model/use-contact-inquiries";
+import { useTargetedContactInquiry } from "./model/use-targeted-contact-inquiry";
 import { ContactAvatar } from "./ui/contact-avatar";
 
 type IdentityView = ContactDetail["identities"][number];
+
+function InquiryNotes({
+  canWrite,
+  inquiryId,
+  workspaceId,
+}: {
+  canWrite: boolean;
+  inquiryId: string;
+  workspaceId: string;
+}) {
+  const { t } = useTranslation("notes");
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-4">
+      <Button
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        size="sm"
+        variant="outline"
+      >
+        <StickyNote aria-hidden="true" className="size-4" />
+        {t(open ? "hideInquiryNotes" : "showInquiryNotes")}
+      </Button>
+      {open && (
+        <div className="mt-4">
+          <NotesSection
+            canWrite={canWrite}
+            targetId={inquiryId}
+            targetType="inquiry"
+            workspaceId={workspaceId}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function safeExternalUrl(value?: string | null) {
   if (!value) return null;
@@ -189,13 +229,47 @@ function ContactPage() {
   const { contactId } = useParams<"contactId">();
   const location = useLocation();
   const scrolledToInquiryRef = useRef<string | null>(null);
-  const { workspaceId } = useAuth();
+  const { workspaceId, workspaces } = useAuth();
   const workspace = workspaceId ?? "";
+  const role = workspaces.find((item) => item.id === workspaceId)?.role;
+  const canWriteNotes =
+    role === "owner" || role === "admin" || role === "manager";
   const contactQuery = useContact(workspace, contactId ?? "");
   const inquiriesQuery = useContactInquiries(workspace, contactId ?? "");
   const contact = contactQuery.data;
   const inquiries =
     inquiriesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const targetedInquiryId = /^#inquiry-([0-9a-f-]{36})$/i.exec(
+    location.hash,
+  )?.[1];
+  const targetedInquiryInList = inquiries.find(
+    (inquiry) => inquiry.id === targetedInquiryId,
+  );
+  const targetedInquiryQuery = useTargetedContactInquiry(
+    workspace,
+    contactId ?? "",
+    targetedInquiryId ?? "",
+    Boolean(
+      contact &&
+      targetedInquiryId &&
+      !targetedInquiryInList &&
+      !inquiriesQuery.isPending,
+    ),
+  );
+  const targetedInquiry =
+    targetedInquiryQuery.data?.contact_id === contactId
+      ? targetedInquiryQuery.data
+      : null;
+  const visibleInquiries =
+    targetedInquiry && !targetedInquiryInList
+      ? [targetedInquiry, ...inquiries]
+      : inquiries;
+  const targetedInquiryLoaded = Boolean(
+    targetedInquiryInList || targetedInquiry,
+  );
+  const targetedInquiryMissing =
+    axios.isAxiosError(targetedInquiryQuery.error) &&
+    [404, 422].includes(targetedInquiryQuery.error.response?.status ?? 0);
   const dateFormat = new Intl.DateTimeFormat(i18n.language, {
     dateStyle: "medium",
   });
@@ -208,14 +282,12 @@ function ContactPage() {
     (axios.isAxiosError(contactQuery.error) &&
       [404, 422].includes(contactQuery.error.response?.status ?? 0));
 
-  const targetedInquiryId = /^#inquiry-([0-9a-f-]{36})$/i.exec(
-    location.hash,
-  )?.[1];
-  const targetedInquiryLoaded = inquiries.some(
-    (inquiry) => inquiry.id === targetedInquiryId,
-  );
   useEffect(() => {
-    if (targetedInquiryId && !targetedInquiryLoaded && inquiriesQuery.isPending)
+    if (
+      targetedInquiryId &&
+      !targetedInquiryLoaded &&
+      (inquiriesQuery.isPending || targetedInquiryQuery.isPending)
+    )
       return;
     const anchorId =
       targetedInquiryId && targetedInquiryLoaded
@@ -239,6 +311,7 @@ function ContactPage() {
     location.key,
     targetedInquiryId,
     targetedInquiryLoaded,
+    targetedInquiryQuery.isPending,
     workspace,
   ]);
 
@@ -330,6 +403,14 @@ function ContactPage() {
           </dl>
         </section>
 
+        <NotesSection
+          canWrite={canWriteNotes}
+          key={`${workspace}:${contact.id}`}
+          targetId={contact.id}
+          targetType="contact"
+          workspaceId={workspace}
+        />
+
         <section aria-labelledby="contact-identities-title">
           <h2
             className="mb-4 text-lg font-semibold"
@@ -363,22 +444,45 @@ function ContactPage() {
             {t("inquiries")}
           </h2>
           {targetedInquiryId &&
-            inquiriesQuery.data &&
-            !targetedInquiryLoaded && (
+            !targetedInquiryLoaded &&
+            contact &&
+            (targetedInquiryQuery.isPending ? (
               <p className="mb-4 text-sm text-muted" role="status">
-                {inquiriesQuery.hasNextPage
-                  ? t("inquiryNotLoaded")
-                  : t("inquiryNotFound")}
+                {t("loading")}
               </p>
-            )}
-          {inquiriesQuery.isPending ? (
+            ) : targetedInquiryMissing ? (
+              <p className="mb-4 text-sm text-muted" role="status">
+                {t("inquiryNotFound")}
+              </p>
+            ) : targetedInquiryQuery.isError ? (
+              <div className="mb-4">
+                <p className="text-sm text-danger" role="alert">
+                  {t("inquiriesLoadError")}
+                </p>
+                <Button
+                  className="mt-2"
+                  onClick={() => void targetedInquiryQuery.refetch()}
+                  size="sm"
+                  variant="outline"
+                >
+                  {t("retry")}
+                </Button>
+              </div>
+            ) : targetedInquiryQuery.data ? (
+              <p className="mb-4 text-sm text-muted" role="status">
+                {t("inquiryNotFound")}
+              </p>
+            ) : null)}
+          {inquiriesQuery.isPending && visibleInquiries.length === 0 ? (
             <p
               className="rounded-2xl border border-line bg-surface px-5 py-8 text-sm text-muted"
               role="status"
             >
               {t("loading")}
             </p>
-          ) : inquiriesQuery.isError && !inquiriesQuery.data ? (
+          ) : inquiriesQuery.isError &&
+            !inquiriesQuery.data &&
+            visibleInquiries.length === 0 ? (
             <div className="rounded-2xl border border-line bg-surface px-5 py-8">
               <p className="text-sm text-danger" role="alert">
                 {t("inquiriesLoadError")}
@@ -391,7 +495,7 @@ function ContactPage() {
                 {t("retry")}
               </Button>
             </div>
-          ) : inquiries.length === 0 ? (
+          ) : visibleInquiries.length === 0 ? (
             <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-sm text-muted">
               {t("noInquiries")}
             </p>
@@ -403,7 +507,7 @@ function ContactPage() {
                 </p>
               )}
               <ul className="grid gap-3">
-                {inquiries.map((inquiry) => (
+                {visibleInquiries.map((inquiry) => (
                   <li
                     className={`scroll-mt-24 rounded-2xl border bg-surface p-5 ${inquiry.id === targetedInquiryId ? "border-brand ring-2 ring-brand/30" : "border-line"}`}
                     id={`inquiry-${inquiry.id}`}
@@ -446,6 +550,11 @@ function ContactPage() {
                         ),
                       })}
                     </p>
+                    <InquiryNotes
+                      canWrite={canWriteNotes}
+                      inquiryId={inquiry.id}
+                      workspaceId={workspace}
+                    />
                   </li>
                 ))}
               </ul>

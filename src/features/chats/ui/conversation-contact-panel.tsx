@@ -11,6 +11,7 @@ import { Link } from "react-router";
 
 import { channelProviders } from "@/features/channels";
 import { type ContactDetail, useContact } from "@/features/contacts";
+import { NotesSection } from "@/features/notes";
 import { contactDetailsPath } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
@@ -176,6 +177,7 @@ function IdentityDetails({ identity }: { identity: Identity }) {
 }
 
 export function ConversationContactPanel({
+  canWriteNotes,
   contactId,
   fallbackAvatarUrl,
   fallbackName,
@@ -184,6 +186,7 @@ export function ConversationContactPanel({
   titleRef,
   workspaceId,
 }: {
+  canWriteNotes: boolean;
   contactId: string | null;
   fallbackAvatarUrl: string | null;
   fallbackName: string;
@@ -293,6 +296,13 @@ export function ConversationContactPanel({
                 </div>
               </dl>
             </section>
+            <NotesSection
+              canWrite={canWriteNotes}
+              compact
+              targetId={contact.id}
+              targetType="contact"
+              workspaceId={workspaceId}
+            />
             <ConversationInquiries
               contactId={contact.id}
               workspaceId={workspaceId}

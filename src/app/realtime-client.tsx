@@ -17,6 +17,7 @@ import {
   refreshInquiryActivity,
 } from "@/features/funnels";
 import { handleMemberRealtimeChange } from "@/features/members";
+import { handleNoteRealtimeChange } from "@/features/notes";
 import { handleNotificationRealtimeChange } from "@/features/notifications";
 import {
   fetchRealtimeStream,
@@ -40,9 +41,11 @@ const safetyReconcileIntervalMs = 15 * 60_000;
 const workspaceQueryKinds = new Set([
   "channels",
   "contacts",
+  "contact-inquiry",
   "conversations",
   "funnels",
   "inquiries",
+  "notes",
   "workspace-members",
 ]);
 
@@ -95,6 +98,9 @@ function parseEnvelope(data: string): RealtimeEnvelope | null {
         "channel_id",
         "conversation_id",
         "message_id",
+        "target_type",
+        "target_id",
+        "note_id",
       ] as const) {
         if (typeof item[key] === "string") change[key] = item[key];
       }
@@ -493,6 +499,7 @@ export function RealtimeClient() {
         }
         handleChannelRealtimeChange(change, activeWorkspaceId, invalidate);
         handleMemberRealtimeChange(change, activeWorkspaceId, invalidate);
+        handleNoteRealtimeChange(change, activeWorkspaceId, invalidate);
         if (
           change.kind.startsWith("conversation.") ||
           (change.kind === "contact.changed" && change.action !== "activity") ||

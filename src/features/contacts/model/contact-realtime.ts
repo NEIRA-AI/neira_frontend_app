@@ -9,6 +9,8 @@ import {
   contactQueryKey,
   contactsQueryKey,
   getContact,
+  targetedContactInquiryQueryKey,
+  targetedContactInquiryQueryPrefix,
   type ContactDetail,
   type ContactPage,
 } from "../api/contacts-api";
@@ -93,6 +95,25 @@ export function handleContactRealtimeChange(
   invalidate: QueueRealtimeInvalidation,
   scheduleActivity: (contactId: string) => void,
 ) {
+  if (change.kind === "funnel.changed") {
+    invalidate(["private", "contact-inquiry", workspaceId]);
+    return;
+  }
+  if (change.kind === "inquiry.changed") {
+    if (change.contact_id && change.inquiry_id) {
+      invalidate(
+        targetedContactInquiryQueryKey(
+          workspaceId,
+          change.contact_id,
+          change.inquiry_id,
+        ),
+        true,
+      );
+    } else {
+      invalidate(["private", "contact-inquiry", workspaceId]);
+    }
+    return;
+  }
   if (change.kind !== "contact.changed") return;
 
   if (change.action === "activity" && change.contact_id) {
@@ -103,7 +124,11 @@ export function handleContactRealtimeChange(
   invalidate([...contactsQueryKey(workspaceId), "list"]);
   if (change.contact_id) {
     invalidate(contactQueryKey(workspaceId, change.contact_id), true);
+    invalidate(
+      targetedContactInquiryQueryPrefix(workspaceId, change.contact_id),
+    );
   } else {
     invalidate(contactsQueryKey(workspaceId));
+    invalidate(["private", "contact-inquiry", workspaceId]);
   }
 }

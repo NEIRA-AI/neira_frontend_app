@@ -8,6 +8,9 @@ export type RealtimeChange = {
   channel_id?: string;
   conversation_id?: string;
   message_id?: string;
+  target_type?: string;
+  target_id?: string;
+  note_id?: string;
   direction?: "inbound" | "outbound";
 };
 

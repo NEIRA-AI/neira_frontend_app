@@ -6,6 +6,7 @@ export type ContactSummary = components["schemas"]["ContactSummary"];
 export type ContactUpdate = components["schemas"]["ContactUpdate"];
 export type ContactPage = components["schemas"]["ContactPage"];
 type InquiryPage = components["schemas"]["InquiryPage"];
+export type ContactInquiry = components["schemas"]["InquirySummary"];
 
 export const contactsQueryKey = (workspaceId: string) =>
   ["private", "contacts", workspaceId] as const;
@@ -26,6 +27,21 @@ export const contactInquiriesQueryKey = (
   contactId: string,
   limit: number,
 ) => [...contactInquiriesQueryPrefix(workspaceId, contactId), limit] as const;
+
+export const targetedContactInquiryQueryPrefix = (
+  workspaceId: string,
+  contactId: string,
+) => ["private", "contact-inquiry", workspaceId, contactId] as const;
+
+export const targetedContactInquiryQueryKey = (
+  workspaceId: string,
+  contactId: string,
+  inquiryId: string,
+) =>
+  [
+    ...targetedContactInquiryQueryPrefix(workspaceId, contactId),
+    inquiryId,
+  ] as const;
 
 export async function listContacts(
   cursor: string | null,
@@ -88,5 +104,17 @@ export async function listContactInquiries(
     params: { contact_id: contactId, limit, cursor: cursor ?? undefined },
     workspace: true,
   });
+  return data;
+}
+
+export async function getTargetedContactInquiry(
+  workspaceId: string,
+  inquiryId: string,
+  signal?: AbortSignal,
+): Promise<ContactInquiry> {
+  const { data } = await api.get<ContactInquiry>(
+    `/inquiries/${encodeURIComponent(inquiryId)}`,
+    { workspace: true, workspaceScopeId: workspaceId, signal },
+  );
   return data;
 }

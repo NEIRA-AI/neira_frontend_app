@@ -11,6 +11,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RotateCcw,
+  StickyNote,
   Trash2,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
@@ -621,8 +622,9 @@ export function MessageThread({
   onOpenAuthor,
   onRetry,
   isContactPanelOpen,
-  isPanelOpen,
+  isNotesPanelOpen,
   onToggleContactPanel,
+  onToggleConversationNotes,
   workspaceId,
 }: {
   canSend: boolean;
@@ -643,8 +645,9 @@ export function MessageThread({
   onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
   onRetry: () => void;
   isContactPanelOpen: boolean;
-  isPanelOpen: boolean;
+  isNotesPanelOpen: boolean;
   onToggleContactPanel: (trigger: HTMLButtonElement) => void;
+  onToggleConversationNotes: (trigger: HTMLButtonElement) => void;
   workspaceId: string;
 }) {
   const { t, i18n } = useTranslation("chats");
@@ -915,13 +918,9 @@ export function MessageThread({
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <ChatAvatarPhoto
               fallbackAction={{
-                controls: isPanelOpen
-                  ? isContactPanelOpen
-                    ? "chat-contact-panel"
-                    : "chat-author-panel"
-                  : undefined,
-                expanded: isPanelOpen,
-                label: isPanelOpen
+                controls: isContactPanelOpen ? "chat-contact-panel" : undefined,
+                expanded: isContactPanelOpen,
+                label: isContactPanelOpen
                   ? t("closeSidePanel")
                   : t("openContactPanel", { name: conversation.title }),
                 onClick: onToggleContactPanel,
@@ -933,13 +932,9 @@ export function MessageThread({
               <h2 className="min-w-0 text-sm font-semibold text-ink sm:text-base">
                 <button
                   aria-controls={
-                    isPanelOpen
-                      ? isContactPanelOpen
-                        ? "chat-contact-panel"
-                        : "chat-author-panel"
-                      : undefined
+                    isContactPanelOpen ? "chat-contact-panel" : undefined
                   }
-                  aria-expanded={isPanelOpen}
+                  aria-expanded={isContactPanelOpen}
                   className="max-w-full cursor-pointer truncate rounded text-left focus-visible:outline-none focus-visible:underline focus-visible:decoration-brand focus-visible:decoration-2 focus-visible:underline-offset-4"
                   onClick={(event) => onToggleContactPanel(event.currentTarget)}
                   type="button"
@@ -990,6 +985,24 @@ export function MessageThread({
           </div>
         )}
         <div className="flex shrink-0 items-center">
+          {conversation && (
+            <button
+              aria-controls={isNotesPanelOpen ? "chat-notes-panel" : undefined}
+              aria-expanded={isNotesPanelOpen}
+              aria-label={
+                isNotesPanelOpen
+                  ? t("closeConversationNotes")
+                  : t("openConversationNotes")
+              }
+              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+              onClick={(event) =>
+                onToggleConversationNotes(event.currentTarget)
+              }
+              type="button"
+            >
+              <StickyNote aria-hidden="true" className="size-5" />
+            </button>
+          )}
           <ChatNotificationMenu
             conversationId={conversationId}
             onOpenChange={(open) =>
@@ -1006,18 +1019,14 @@ export function MessageThread({
               </button>
             }
           />
-          {(conversation?.kind === "external" || isPanelOpen) && (
+          {conversation?.kind === "external" && (
             <button
               aria-controls={
-                isPanelOpen
-                  ? isContactPanelOpen
-                    ? "chat-contact-panel"
-                    : "chat-author-panel"
-                  : undefined
+                isContactPanelOpen ? "chat-contact-panel" : undefined
               }
-              aria-expanded={isPanelOpen}
+              aria-expanded={isContactPanelOpen}
               aria-label={
-                isPanelOpen
+                isContactPanelOpen
                   ? t("closeSidePanel")
                   : t("openContactPanel", { name: conversation?.title ?? "" })
               }
@@ -1026,7 +1035,7 @@ export function MessageThread({
               onClick={(event) => onToggleContactPanel(event.currentTarget)}
               type="button"
             >
-              {isPanelOpen ? (
+              {isContactPanelOpen ? (
                 <PanelRightClose aria-hidden="true" className="size-5" />
               ) : (
                 <PanelRightOpen aria-hidden="true" className="size-5" />

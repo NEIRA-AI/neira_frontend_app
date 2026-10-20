@@ -8,6 +8,7 @@ import type { ChatMessage, Conversation } from "../api/conversations-api";
 
 import { ConversationAuthorPanel } from "./conversation-author-panel";
 import { ConversationContactPanel } from "./conversation-contact-panel";
+import { ConversationNotesPanel } from "./conversation-notes-panel";
 import { MessageThread } from "./message-thread";
 
 type ContactTarget = {
@@ -24,6 +25,8 @@ type AuthorTarget = {
   name: string;
   avatarUrl: string | null;
 };
+
+type NotesTarget = { kind: "notes" };
 
 type ScopedTarget<T> = {
   conversationId: string;
@@ -84,12 +87,14 @@ export function ActiveConversation({
     useState<ScopedTarget<ContactTarget> | null>(null);
   const [selectedAuthor, setSelectedAuthor] =
     useState<ScopedTarget<AuthorTarget> | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [isWide, setIsWide] = useState(
     () => window.matchMedia("(min-width: 1280px)").matches,
   );
   const authorBackButtonRef = useRef<HTMLButtonElement>(null);
   const authorTitleRef = useRef<HTMLHeadingElement>(null);
   const contactTitleRef = useRef<HTMLHeadingElement>(null);
+  const notesTitleRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLButtonElement | null>(null);
   const currentConversation =
     conversation?.id === conversationId ? conversation : null;
@@ -117,19 +122,24 @@ export function ActiveConversation({
       : null;
   const panelTarget =
     authorOverride ??
+    (notesOpen ? ({ kind: "notes" } satisfies NotesTarget) : null) ??
     (isContactPanelPreferredOpen ? (contactOverride ?? currentContact) : null);
   const panelOpen = Boolean(panelTarget && currentConversation);
   const panelKind = panelTarget?.kind ?? null;
   const panelTargetKey =
     panelTarget?.kind === "author"
       ? `author:${panelTarget.messageId}`
-      : panelTarget?.kind === "contact"
-        ? `contact:${panelTarget.contactId}:${panelTarget.identityId}`
-        : null;
+      : panelTarget?.kind === "notes"
+        ? `notes:${conversationId}`
+        : panelTarget?.kind === "contact"
+          ? `contact:${panelTarget.contactId}:${panelTarget.identityId}`
+          : null;
   const panelTitle =
     panelTarget?.kind === "author"
       ? t("authorPanelTitle")
-      : t("contactPanelTitle");
+      : panelTarget?.kind === "notes"
+        ? t("conversationNotesPanelTitle")
+        : t("contactPanelTitle");
 
   function renderPanel(mode: "drawer" | "inline") {
     if (!panelTarget || !currentConversation) return null;
@@ -149,12 +159,25 @@ export function ActiveConversation({
         />
       );
     }
+    if (panelTarget.kind === "notes") {
+      return (
+        <ConversationNotesPanel
+          canWrite={canSend}
+          conversationId={conversationId}
+          mode={mode}
+          titleRef={notesTitleRef}
+          workspaceId={workspaceId}
+        />
+      );
+    }
     return (
       <ConversationContactPanel
+        canWriteNotes={canSend}
         contactId={panelTarget.contactId}
         fallbackAvatarUrl={panelTarget.avatarUrl}
         fallbackName={panelTarget.name}
         identityId={panelTarget.identityId}
+        key={`${workspaceId}:${panelTarget.contactId}`}
         mode={mode}
         titleRef={contactTitleRef}
         workspaceId={workspaceId}
@@ -186,6 +209,7 @@ export function ActiveConversation({
   const closePanel = useCallback(() => {
     setSelectedAuthor(null);
     setSelectedContact(null);
+    setNotesOpen(false);
     setContactPanelPreference(false);
     if (isWide) {
       window.requestAnimationFrame(focusPanelTrigger);
@@ -195,6 +219,7 @@ export function ActiveConversation({
   function backToContact() {
     setSelectedAuthor(null);
     setSelectedContact(null);
+    setNotesOpen(false);
     setContactPanelPreference(true);
     window.requestAnimationFrame(() => {
       if (currentContact) contactTitleRef.current?.focus();
@@ -214,6 +239,8 @@ export function ActiveConversation({
     if (returnFocusRef.current) {
       if (panelKind === "author") {
         (authorBackButtonRef.current ?? authorTitleRef.current)?.focus();
+      } else if (panelKind === "notes") {
+        notesTitleRef.current?.focus();
       } else {
         contactTitleRef.current?.focus();
       }
@@ -244,7 +271,7 @@ export function ActiveConversation({
         conversationId={conversationId}
         hasNextPage={hasNextPage}
         isContactPanelOpen={panelOpen && panelTarget?.kind === "contact"}
-        isPanelOpen={panelOpen}
+        isNotesPanelOpen={panelOpen && panelTarget?.kind === "notes"}
         isError={isError}
         isFetchingNextPage={isFetchingNextPage}
         isPending={isPending}
@@ -261,6 +288,7 @@ export function ActiveConversation({
             return;
           }
           setSelectedAuthor(null);
+          setNotesOpen(false);
           setSelectedContact(
             contactId === currentContact?.contactId &&
               identityId === currentContact.identityId
@@ -283,6 +311,7 @@ export function ActiveConversation({
         }}
         onOpenAuthor={(message, trigger) => {
           returnFocusRef.current = trigger;
+          setNotesOpen(false);
           setSelectedAuthor({
             conversationId,
             userId: user?.id ?? null,
@@ -299,11 +328,21 @@ export function ActiveConversation({
           returnFocusRef.current = trigger;
           setSelectedAuthor(null);
           setSelectedContact(null);
-          setContactPanelPreference(!panelOpen);
-          if (!panelOpen) {
+          setNotesOpen(false);
+          const openingContact = panelTarget?.kind !== "contact";
+          setContactPanelPreference(openingContact);
+          if (openingContact) {
             window.requestAnimationFrame(() =>
               contactTitleRef.current?.focus(),
             );
+          }
+        }}
+        onToggleConversationNotes={(trigger) => {
+          returnFocusRef.current = trigger;
+          setSelectedAuthor(null);
+          setNotesOpen((open) => !open);
+          if (!notesOpen) {
+            window.requestAnimationFrame(() => notesTitleRef.current?.focus());
           }
         }}
         onRetry={onRetry}

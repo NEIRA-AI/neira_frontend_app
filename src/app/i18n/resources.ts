@@ -16,6 +16,7 @@ import { funnelsTranslations } from "@/features/funnels";
 import { invitationsTranslations } from "@/features/invitations";
 import { impersonationTranslations } from "@/features/impersonation";
 import { membersTranslations } from "@/features/members";
+import { notesTranslations } from "@/features/notes";
 import { notFoundTranslations } from "@/features/not-found";
 import { notificationsTranslations } from "@/features/notifications";
 import { settingsTranslations } from "@/features/settings";
@@ -42,6 +43,7 @@ const ru = {
   impersonation: impersonationTranslations.ru,
   language: languageTranslations.ru,
   members: membersTranslations.ru,
+  notes: notesTranslations.ru,
   notFound: notFoundTranslations.ru,
   notifications: notificationsTranslations.ru,
   settings: settingsTranslations.ru,
@@ -66,6 +68,7 @@ const en = {
   impersonation: impersonationTranslations.en,
   language: languageTranslations.en,
   members: membersTranslations.en,
+  notes: notesTranslations.en,
   notFound: notFoundTranslations.en,
   notifications: notificationsTranslations.en,
   settings: settingsTranslations.en,
