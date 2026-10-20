@@ -16,9 +16,6 @@ export const ROUTES = {
   CONTACT_DETAILS: "/contacts/:contactId",
   CHANNELS_CONNECT: "/channels/connect",
   CHANNEL_DETAILS: "/channels/:channelId",
-  CHANNELS_PREVIEW: "/preview/channels",
-  CHANNELS_PREVIEW_CONNECT: "/preview/channels/connect",
-  CHANNELS_PREVIEW_DETAILS: "/preview/channels/:channelId",
   FUNNELS: "/funnels",
   MESSAGES: "/messages",
   MESSAGE_CONVERSATION: "/messages/:conversationId",
@@ -32,9 +29,6 @@ export type PathParams = {
   };
   [ROUTES.CONTACT_DETAILS]: {
     contactId: string;
-  };
-  [ROUTES.CHANNELS_PREVIEW_DETAILS]: {
-    channelId: string;
   };
   [ROUTES.INVITATION]: {
     token: string;
@@ -56,10 +50,6 @@ export function channelDetailsPath(channelId: string) {
 
 export function contactDetailsPath(contactId: string) {
   return generatePath(ROUTES.CONTACT_DETAILS, { contactId });
-}
-
-export function channelPreviewDetailsPath(channelId: string) {
-  return generatePath(ROUTES.CHANNELS_PREVIEW_DETAILS, { channelId });
 }
 
 export function messageConversationPath(conversationId: string) {

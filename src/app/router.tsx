@@ -106,27 +106,6 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/features/channels/channel.page"),
                   },
                   {
-                    lazy: () =>
-                      import("@/features/channels-preview/channels-preview-route"),
-                    children: [
-                      {
-                        path: ROUTES.CHANNELS_PREVIEW,
-                        lazy: () =>
-                          import("@/features/channels-preview/channels-preview.page"),
-                      },
-                      {
-                        path: ROUTES.CHANNELS_PREVIEW_CONNECT,
-                        lazy: () =>
-                          import("@/features/channels-preview/connect/connect-channel-preview.page"),
-                      },
-                      {
-                        path: ROUTES.CHANNELS_PREVIEW_DETAILS,
-                        lazy: () =>
-                          import("@/features/channels-preview/channel-preview-edit.page"),
-                      },
-                    ],
-                  },
-                  {
                     path: ROUTES.FUNNELS,
                     lazy: () => import("@/features/funnels/funnels.page"),
                   },
