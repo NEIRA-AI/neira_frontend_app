@@ -490,7 +490,7 @@ function MessageRow({
           />
         ))}
       <div
-        className={`${hasPhotos ? `${photoParts.length > 1 ? "w-[min(85%,32rem)]" : "w-[min(85%,22rem)]"} overflow-hidden` : "max-w-[min(85%,38rem)] px-3 py-2"} rounded-2xl border border-line text-ink shadow-sm motion-safe:transition-colors motion-safe:duration-700 ${isHighlighted ? "bg-message-highlight" : "bg-surface"} ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
+        className={`${hasPhotos ? `${photoParts.length > 1 ? "w-[min(85%,32rem)]" : "w-[min(85%,22rem)]"} overflow-hidden` : message.reply_to ? "max-w-[min(85%,26rem)] px-3 py-2" : "max-w-[min(85%,38rem)] px-3 py-2"} rounded-2xl border border-line text-ink shadow-sm motion-safe:transition-colors motion-safe:duration-700 ${isHighlighted ? "bg-message-highlight" : "bg-surface"} ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
       >
         {message.author_name &&
           (isOutgoing || canOpenContact ? (
@@ -1331,7 +1331,7 @@ export function MessageThread({
         </div>
 
         {(!isAtBottom || hasNewMessage) && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex flex-col items-center gap-2">
+          <div className="pointer-events-none absolute inset-x-0 bottom-8 z-20 flex flex-col items-center gap-2">
             {hasNewMessage && (
               <button
                 className="pointer-events-auto cursor-pointer rounded-full bg-brand-fill px-4 py-2 text-xs font-semibold text-on-brand shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"

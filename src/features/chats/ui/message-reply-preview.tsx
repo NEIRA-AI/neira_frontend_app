@@ -124,7 +124,7 @@ export function MessageReplyPreview({
   function setPreviewElement(element: HTMLElement | null) {
     previewElementRef.current = element;
   }
-  const className = `${hasPhotos ? "mx-3 mt-2 mb-2" : "mb-2"} flex min-w-0 max-w-[min(100%,26rem)] items-center gap-2 rounded-lg border-l-[3px] border-brand bg-brand-soft px-2.5 py-1.5 text-left ${onOpen ? "cursor-pointer transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" : ""}`;
+  const className = `${hasPhotos ? "mx-3 mt-2 mb-2 w-[calc(100%-1.5rem)]" : "mb-2 w-full"} flex min-w-0 items-center gap-2 rounded-lg border-l-[3px] border-brand bg-brand-soft px-2.5 py-1.5 text-left ${onOpen ? "cursor-pointer transition-colors hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" : ""}`;
   const preview = (
     <>
       {showThumbnail && thumbnailUrl && (
