@@ -1932,6 +1932,7 @@ export interface components {
       occurred_at: string;
       /** Edited At */
       edited_at: string | null;
+      reply_to: components["schemas"]["ConversationMessageReply"] | null;
       /** Parts */
       parts: components["schemas"]["ConversationMessagePart"][];
     };
@@ -1978,6 +1979,24 @@ export interface components {
       media_url: string | null;
       /** Media Url Expires At */
       media_url_expires_at: string | null;
+    };
+    /** ConversationMessageReply */
+    ConversationMessageReply: {
+      /** Message Id */
+      message_id: string | null;
+      /** Author Name */
+      author_name: string | null;
+      /** Text */
+      text: string | null;
+      /**
+       * Content Type
+       * @enum {string}
+       */
+      content_type: "text" | "image" | "file" | "voice" | "unknown";
+      /** Thumbnail Url */
+      thumbnail_url: string | null;
+      /** Thumbnail Url Expires At */
+      thumbnail_url_expires_at: string | null;
     };
     /** ConversationMessageRevision */
     ConversationMessageRevision: {

@@ -14,7 +14,7 @@ import {
   StickyNote,
   Trash2,
 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
@@ -50,6 +50,7 @@ import { MessageEditHistory } from "./message-edit-history";
 import { MessageFile } from "./message-file";
 import { MessagePhotoMosaic } from "./message-photo-mosaic";
 import { MessagePhotoViewer } from "./message-photo-viewer";
+import { MessageReplyPreview } from "./message-reply-preview";
 import { MessageVoice } from "./message-voice";
 
 type MessagePart = ChatMessage["parts"][number];
@@ -313,6 +314,8 @@ function MessageRow({
   onCancelFailed,
   onOpenContact,
   onOpenAuthor,
+  onOpenReply,
+  isHighlighted,
   retryError,
   retryBlocked,
   retrying,
@@ -336,6 +339,8 @@ function MessageRow({
     fallback: { name: string; avatarUrl: string | null },
   ) => void;
   onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
+  onOpenReply?: (messageId: string) => void;
+  isHighlighted: boolean;
   retryError: string | null;
   retryBlocked: boolean;
   retrying: boolean;
@@ -345,6 +350,7 @@ function MessageRow({
 }) {
   const { t } = useTranslation("chats");
   const text = messageText(message);
+  const repliedMessageId = message.reply_to?.message_id;
   const mediaParts = message.parts
     .filter(
       (part) =>
@@ -440,8 +446,14 @@ function MessageRow({
 
   if (isSystem) {
     return (
-      <li className="flex justify-center py-2" data-message-id={message.id}>
-        <span className="max-w-[80%] rounded-full bg-subtle px-4 py-2 text-center text-xs text-muted">
+      <li
+        className="flex justify-center py-2"
+        data-message-id={message.id}
+        tabIndex={-1}
+      >
+        <span
+          className={`max-w-[80%] rounded-full px-4 py-2 text-center text-xs text-muted motion-safe:transition-colors motion-safe:duration-700 ${isHighlighted ? "bg-message-highlight" : "bg-subtle"}`}
+        >
           {text || unsupportedMessage}
         </span>
       </li>
@@ -452,6 +464,7 @@ function MessageRow({
     <li
       className={`flex items-end gap-2 ${isOutgoing ? "justify-end" : "justify-start"}`}
       data-message-id={message.id}
+      tabIndex={-1}
     >
       {!isOutgoing &&
         (message.author_contact_id ? (
@@ -477,7 +490,7 @@ function MessageRow({
           />
         ))}
       <div
-        className={`${hasPhotos ? `${photoParts.length > 1 ? "w-[min(85%,32rem)]" : "w-[min(85%,22rem)]"} overflow-hidden` : "max-w-[min(85%,38rem)] px-3 py-2"} rounded-2xl border border-line bg-surface text-ink shadow-sm ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
+        className={`${hasPhotos ? `${photoParts.length > 1 ? "w-[min(85%,32rem)]" : "w-[min(85%,22rem)]"} overflow-hidden` : "max-w-[min(85%,38rem)] px-3 py-2"} rounded-2xl border border-line text-ink shadow-sm motion-safe:transition-colors motion-safe:duration-700 ${isHighlighted ? "bg-message-highlight" : "bg-surface"} ${isOutgoing ? "rounded-br-md" : "rounded-bl-md"}`}
       >
         {message.author_name &&
           (isOutgoing || canOpenContact ? (
@@ -501,6 +514,18 @@ function MessageRow({
               {message.author_name}
             </p>
           ))}
+        {message.reply_to && (
+          <MessageReplyPreview
+            hasPhotos={hasPhotos}
+            onOpen={
+              repliedMessageId && onOpenReply
+                ? () => onOpenReply(repliedMessageId)
+                : undefined
+            }
+            refreshReply={refreshMediaMessage}
+            reply={message.reply_to}
+          />
+        )}
         {mediaParts.length > 0 && (
           <div
             className={
@@ -692,6 +717,25 @@ export function MessageThread({
   const [notificationMenuOpenFor, setNotificationMenuOpenFor] = useState<
     string | null
   >(null);
+  const [highlightedMessage, setHighlightedMessage] = useState<{
+    conversationId: string;
+    messageId: string;
+  } | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
+  const highlightFrameRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+      if (highlightFrameRef.current !== null) {
+        window.cancelAnimationFrame(highlightFrameRef.current);
+        highlightFrameRef.current = null;
+      }
+    },
+    [],
+  );
   const deliveredMessages = messages.filter(
     (message) => message.delivery_status !== "failed",
   );
@@ -705,6 +749,9 @@ export function MessageThread({
     ...deliveredMessages,
     ...(failedMessagesHidden ? [] : failedMessages),
   ];
+  const displayedMessageIds = new Set(
+    displayedMessages.map((message) => message.id),
+  );
   const {
     scrollRef,
     olderSentinelRef,
@@ -754,6 +801,57 @@ export function MessageThread({
       id === (channelQuery.data?.provider ?? conversation?.channel_provider),
   );
   const channelType = channelProvider ? tChannels(channelProvider.label) : null;
+
+  function openReply(messageId: string) {
+    const root = scrollRef.current;
+    const target = Array.from(
+      root?.querySelectorAll<HTMLElement>("[data-message-id]") ?? [],
+    ).find((element) => element.dataset.messageId === messageId);
+    if (!root || !target) return;
+    if (highlightTimeoutRef.current !== null) {
+      window.clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = null;
+    }
+    if (highlightFrameRef.current !== null) {
+      window.cancelAnimationFrame(highlightFrameRef.current);
+      highlightFrameRef.current = null;
+    }
+    setHighlightedMessage({ conversationId, messageId });
+    target.focus({ preventScroll: true });
+    const rootRect = root.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const desiredTop =
+      root.scrollTop +
+      targetRect.top -
+      rootRect.top -
+      (rootRect.height - targetRect.height) / 2;
+    const destination = Math.max(
+      0,
+      Math.min(desiredTop, root.scrollHeight - root.clientHeight),
+    );
+    root.scrollTo({
+      top: destination,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+    const deadline = window.performance.now() + 2000;
+    const waitForScroll = () => {
+      if (
+        Math.abs(root.scrollTop - destination) <= 2 ||
+        window.performance.now() >= deadline
+      ) {
+        highlightFrameRef.current = null;
+        highlightTimeoutRef.current = window.setTimeout(() => {
+          setHighlightedMessage(null);
+          highlightTimeoutRef.current = null;
+        }, 1400);
+        return;
+      }
+      highlightFrameRef.current = window.requestAnimationFrame(waitForScroll);
+    };
+    waitForScroll();
+  }
 
   function toggleFailedMessagesHidden() {
     const hidden = !failedMessagesHidden;
@@ -1149,6 +1247,11 @@ export function MessageThread({
                             failedTimeFormat={failedTimeFormat}
                             key={message.id}
                             message={message}
+                            isHighlighted={
+                              highlightedMessage?.conversationId ===
+                                conversationId &&
+                              highlightedMessage.messageId === message.id
+                            }
                             workspaceId={workspaceId}
                             deliveryStatusText={deliveryStatusText}
                             onRetryFailed={(failedMessage) => {
@@ -1168,6 +1271,14 @@ export function MessageThread({
                             }
                             onOpenContact={onOpenContact}
                             onOpenAuthor={onOpenAuthor}
+                            onOpenReply={
+                              message.reply_to?.message_id &&
+                              displayedMessageIds.has(
+                                message.reply_to.message_id,
+                              )
+                                ? openReply
+                                : undefined
+                            }
                             retryError={
                               retryError?.messageId === message.id
                                 ? retryError.text
@@ -1281,6 +1392,8 @@ function MessageWithFailedSection({
   onToggleFailedMessagesHidden,
   onOpenContact,
   onOpenAuthor,
+  onOpenReply,
+  isHighlighted,
   retryError,
   retryBlocked,
   retrying,
@@ -1313,6 +1426,8 @@ function MessageWithFailedSection({
     fallback: { name: string; avatarUrl: string | null },
   ) => void;
   onOpenAuthor: (message: ChatMessage, trigger: HTMLButtonElement) => void;
+  onOpenReply?: (messageId: string) => void;
+  isHighlighted: boolean;
   retryError: string | null;
   retryBlocked: boolean;
   retrying: boolean;
@@ -1338,6 +1453,7 @@ function MessageWithFailedSection({
         canManageFailure={canManageFailure}
         actionsBusy={actionsBusy}
         message={message}
+        isHighlighted={isHighlighted}
         workspaceId={workspaceId}
         deliveryStatusText={deliveryStatusText}
         failedTimeFormat={failedTimeFormat}
@@ -1345,6 +1461,7 @@ function MessageWithFailedSection({
         onCancelFailed={onCancelFailed}
         onOpenContact={onOpenContact}
         onOpenAuthor={onOpenAuthor}
+        onOpenReply={onOpenReply}
         retryError={retryError}
         retryBlocked={retryBlocked}
         retrying={retrying}

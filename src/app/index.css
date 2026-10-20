@@ -14,6 +14,7 @@
   --color-page: var(--ui-page);
   --color-surface: var(--ui-surface);
   --color-subtle: var(--ui-subtle);
+  --color-message-highlight: var(--ui-message-highlight);
   --color-ink: var(--ui-ink);
   --color-muted: var(--ui-muted);
   --color-muted-strong: var(--ui-muted-strong);
@@ -60,6 +61,7 @@
   --ui-page: #efeff6;
   --ui-surface: #ffffff;
   --ui-subtle: #efeff6;
+  --ui-message-highlight: #edf3ff;
   --ui-ink: #1a1635;
   --ui-muted: rgb(26 22 53 / 70%);
   --ui-muted-strong: rgb(26 22 53 / 90%);
@@ -127,6 +129,7 @@
   --ui-page: #0d1017;
   --ui-surface: #1c1e2c;
   --ui-subtle: #363848;
+  --ui-message-highlight: #2a3a5e;
   --ui-ink: #ffffff;
   --ui-muted: rgb(235 235 245 / 50%);
   --ui-muted-strong: rgb(235 235 245 / 90%);
